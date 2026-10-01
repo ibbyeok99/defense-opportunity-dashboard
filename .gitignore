@@ -1,0 +1,11 @@
+.env
+**/.streamlit/secrets.toml
+**/.streamlit/secrets.community.local.toml
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.csv
+*.xlsx
+*.sqlite
+*.log

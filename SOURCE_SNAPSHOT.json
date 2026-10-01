@@ -1,0 +1,253 @@
+{
+  "author": "Codex",
+  "date": "2026-10-02",
+  "source_repository": "dkdkdk606/frontline_data",
+  "source_commit": "e52ddc0b373e1127528226afbd382c44e93e8af5",
+  "deployment_repository": "ibbyeok99/defense-opportunity-dashboard",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "7046947719d7cf9a426afcfb4c7a62c4c2890141426fcb859b7f21d3c22e45ef"
+    },
+    {
+      "path": ".streamlit/config.toml",
+      "sha256": "21bdd35838d9b1d9274a81ab07004476e117f2990877c551be8597223d285087"
+    },
+    {
+      "path": "dashboard/.streamlit/config.toml",
+      "sha256": "21bdd35838d9b1d9274a81ab07004476e117f2990877c551be8597223d285087"
+    },
+    {
+      "path": "dashboard/.streamlit/secrets.community.example.toml",
+      "sha256": "c0b4119ff9e08cca39a65d6a4c09ae939afb45613a1591843e105426b68e6f20"
+    },
+    {
+      "path": "dashboard/app_pages/favorites.py",
+      "sha256": "a4e57d4477caacd92895ee1cd011671e187983606258d8324b207aa2fc0375e1"
+    },
+    {
+      "path": "dashboard/app_pages/institutions.py",
+      "sha256": "af0e5b13fa5aa8516ba65728112bb3dd5cc0b9b31bccaeff4b01974c11cf61c6"
+    },
+    {
+      "path": "dashboard/app_pages/item.py",
+      "sha256": "64c291828b30d9c41b9298525ac5091901d41dd79d8edb1e47f8bdc9c9c4e7a4"
+    },
+    {
+      "path": "dashboard/app_pages/notices.py",
+      "sha256": "c97a38b0b8543bef42b3405a1dcf0cea1754f4eeb3cbcd277296e4447ee5682e"
+    },
+    {
+      "path": "dashboard/app_pages/overview.py",
+      "sha256": "5f7c1eeff66a04b1d6eff5e1e5782e5c2699587f550ea8c801f953a375d50700"
+    },
+    {
+      "path": "dashboard/assets/icons/construction.png",
+      "sha256": "128670b05aeb5b7a4cc6233aab1aea0c54b82c690ee7bd4e0d0bc69a21137d30"
+    },
+    {
+      "path": "dashboard/assets/icons/contracts.png",
+      "sha256": "08da8c9ab2eb116d6eff35c82d6d8245608f6d66846482863f89341488685891"
+    },
+    {
+      "path": "dashboard/assets/icons/foreign.png",
+      "sha256": "b3bd2154658bb38ed336abdc69218d80044125dbfa8cb0117b528603541381ee"
+    },
+    {
+      "path": "dashboard/assets/icons/goods.png",
+      "sha256": "cb3abc6987ae16332b62f1cd3e5c9e935baed70f39d448d979207b14a2a755e3"
+    },
+    {
+      "path": "dashboard/assets/icons/market_contracts.png",
+      "sha256": "cd480a2f74fc3bf0df951d72d21e7e697f5e09518505827e92f1cf804062fe3f"
+    },
+    {
+      "path": "dashboard/assets/icons/market_notices.png",
+      "sha256": "1f2c68acc0bc050cc5cfea37058ce2aeadbc4fb7381db67e1c333adfaaa368a8"
+    },
+    {
+      "path": "dashboard/assets/icons/market_openings.png",
+      "sha256": "caee33a98db112a09adbea9dac31a5df69de010e5a4c17a83165f54bb4d31c8a"
+    },
+    {
+      "path": "dashboard/assets/icons/market_single_bid.png",
+      "sha256": "a556bcd146912cb7e4969e47a2e550d79638b9990a3384d92faacae72fabeb1f"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_company_match.png",
+      "sha256": "71b4b5f3bb022445c8aced44cc5ddaa33adcaa92e3263c35d97bcbc05db81fe5"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_deadline.png",
+      "sha256": "94c869fdb9d092191175634fef2f0d385344c61c64ef3bc451556ea20c962532"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_found.png",
+      "sha256": "b6213eb36e5d84922565d883dcac1e68b89b61787ae5d5b7f97387e0ad839f1b"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_review.png",
+      "sha256": "28db03bbe4e10a466628c7cca3bcb5a5f244ce503fcab1f3ff25dd6ddeac6eba"
+    },
+    {
+      "path": "dashboard/assets/icons/participants.png",
+      "sha256": "90aeba6a80a349e32afe30fb5febaa454fd4ade421262748d81659908a459343"
+    },
+    {
+      "path": "dashboard/assets/icons/services.png",
+      "sha256": "cd5568ffdc67f8644dead89451617b11326ae368bbeea82007516c929d45fa69"
+    },
+    {
+      "path": "dashboard/assets/icons/single_bid.png",
+      "sha256": "05f1ab2ef9392fa4e95c9669b612ff1ad0a430addb3c297d0727d21e08b588e1"
+    },
+    {
+      "path": "dashboard/assets/icons/supplier_share.png",
+      "sha256": "50fb8dd06413432dadbf7acc7a7d69a389aff9d1cfd87b121af6ac6095add851"
+    },
+    {
+      "path": "dashboard/requirements.txt",
+      "sha256": "22431e0c4eff517928ea849f9ad55e27ec7465380e8d23a1913da80ce9cadc00"
+    },
+    {
+      "path": "dashboard/service/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "dashboard/service/api_transport.py",
+      "sha256": "5d7161c46a6361da17b130105ed03a2290e37eab8f7ef7e64b586d8bdf83eb3a"
+    },
+    {
+      "path": "dashboard/service/data.py",
+      "sha256": "3033b263a92e2bbe4c8c71c5b1c5b6f99c61ac24763ca4f9e8567d816beb1f9a"
+    },
+    {
+      "path": "dashboard/service/eligibility.py",
+      "sha256": "d092d490a0e4ff8e0241976e88a7f8546a450b0e3df00c30a764be0c872695bf"
+    },
+    {
+      "path": "dashboard/service/filters.py",
+      "sha256": "3a5e4650f0bce9f1e5588662cb309300f47c075a3f82d5da48bb4ff743409f06"
+    },
+    {
+      "path": "dashboard/service/institution_display.py",
+      "sha256": "5afdd2ebf2be5f253e2de5429191f1211cbe473cdf6b60d30b0c82522ab11d29"
+    },
+    {
+      "path": "dashboard/service/metrics.py",
+      "sha256": "542cd0914dd970f939d0d410f600ceef6f33998325fa57b15035f75cd02e36f7"
+    },
+    {
+      "path": "dashboard/service/notice_documents.py",
+      "sha256": "64c97482470d4a7d531a79c299c6ebc67fef3c2832134a7e3c7d2a3ba0860bee"
+    },
+    {
+      "path": "dashboard/service/notice_sort.py",
+      "sha256": "d15accb5c56337b4db409441720a7592b4ef71c92140c497ff25c1e00aab114f"
+    },
+    {
+      "path": "dashboard/service/queries.py",
+      "sha256": "b97e5296f0fae344e600de092966bc36617c5302505a4dd90b806c47b79f54e2"
+    },
+    {
+      "path": "dashboard/service/source.py",
+      "sha256": "d6d620340ca99c088b278dd160f1bd7ba6db07f80bce10d6a14e3a5a3d193276"
+    },
+    {
+      "path": "dashboard/streamlit_app.py",
+      "sha256": "5a4d498600b08efba578779ff622e0a88dc004b5a1e37c9bc88c1b2915d7e0e9"
+    },
+    {
+      "path": "dashboard/view/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "dashboard/view/assets.py",
+      "sha256": "1cbde2327a48ecd75adeaf5f72b8a8d5a5e2899f0ad26a63f65b497475f64d47"
+    },
+    {
+      "path": "dashboard/view/calendar.py",
+      "sha256": "10641f18095c22d632574a5c15807208fabf339f91feca1d6c53fd870024230d"
+    },
+    {
+      "path": "dashboard/view/charts.py",
+      "sha256": "8d1b6af7036725ee1c99743284a91ea12c82a8e7ce1e02122cd1275eabfe4c21"
+    },
+    {
+      "path": "dashboard/view/comparison.py",
+      "sha256": "991f1e1b0c48037bd8dbab4622a2eacf89637978f470bab5e4b40474ae0ef326"
+    },
+    {
+      "path": "dashboard/view/contract_patterns.py",
+      "sha256": "db8cbe5f8cc473817763ac98b5237d2c7ce75242ce4b7d63bce264d41de55e67"
+    },
+    {
+      "path": "dashboard/view/entry_summary.py",
+      "sha256": "372d0215bd987c8458e4545e08b7eea426064c98160ffc2c3e2e078023b7cc7c"
+    },
+    {
+      "path": "dashboard/view/fmt.py",
+      "sha256": "6382f2ad9e7ce33454e3163dd1aeccf3cac5f25154747080a9ea331e48e821fc"
+    },
+    {
+      "path": "dashboard/view/help.py",
+      "sha256": "62cf274f251753a341f761f98fce917e6b04acfc248a56b60c4e1f6376f77d73"
+    },
+    {
+      "path": "dashboard/view/institution_table.py",
+      "sha256": "3381b80692da907c9bbbe49a2514b3fde86256be6d7ac01a36e545c152e25e72"
+    },
+    {
+      "path": "dashboard/view/navigation.py",
+      "sha256": "d4add53b6a6044c3cf1c2ef6ecf48d5c486d07f25345eb9d3c2e5f13b2d8b9f8"
+    },
+    {
+      "path": "dashboard/view/notice_detail.py",
+      "sha256": "cd68553112d1fdf9db5cf70c89c1a233c9309f99ed448f964a3503ee56c0d421"
+    },
+    {
+      "path": "dashboard/view/notice_table.py",
+      "sha256": "16ab1c718a8e89c400e57e13e69f3759d10fa80f0ed9509ac28ca4303f805a7a"
+    },
+    {
+      "path": "dashboard/view/pdf.py",
+      "sha256": "7dd91f6cf273a261cf614e805bfd5d4280aa1dc347c4f29118f5ed4a5f2a760b"
+    },
+    {
+      "path": "dashboard/view/plotly_charts.py",
+      "sha256": "a2e941f19fff7889384ea90f27daa4b019af3b1f126f0580831dc1e67735ce18"
+    },
+    {
+      "path": "dashboard/view/search_summary.py",
+      "sha256": "28e3df52438dc2b41e5ad55949eed757ecd6a204b2d9c21985ad0432b27418b4"
+    },
+    {
+      "path": "dashboard/view/sidebar_interactions.py",
+      "sha256": "9ccbdbfae07d0339b76a522b4f68898152a3cd5fc59ffff9a3966e86bbd7c433"
+    },
+    {
+      "path": "dashboard/view/store.py",
+      "sha256": "2acfa4a4fc6792ae08806070afaeaa126f3b93345f74e1057b19e8cb77947b29"
+    },
+    {
+      "path": "dashboard/view/style.py",
+      "sha256": "a7b3cd952918d25f373285a6c5192f32a011d4acebb725a5d960c6d2015fed8e"
+    },
+    {
+      "path": "dashboard/view/table_interactions.py",
+      "sha256": "daef45787b0015aae8caf04d74be217eb7bd264fcaacb88dc786ce63df8f860a"
+    },
+    {
+      "path": "dashboard/view/widgets.py",
+      "sha256": "6a0e2e79671b614ae5393723b717104ca2fb1719a29db5496ed1d7f4a705e532"
+    },
+    {
+      "path": "packages.txt",
+      "sha256": "e9e63fcfc0da0d70b5fb443d25e9f20c7371da8e7e5dc84dd14a73fd0c0a0a99"
+    },
+    {
+      "path": "README.md",
+      "sha256": "b9e0b5ecb5806c1a8db3157f00f67f7e03d0f377d0030bb1ba995592996143ac"
+    }
+  ]
+}

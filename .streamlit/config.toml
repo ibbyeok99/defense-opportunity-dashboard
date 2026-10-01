@@ -1,0 +1,75 @@
+# 디자인 v10 (Codex, 2026-09-30):
+# 회청색 중성 배경과 사이드바를 바탕으로 두고, 차트·핵심 지표에는 서로 구분되는 강조색을 사용한다.
+# 참여 판단 배지의 색은 의미를 유지하고, 차트 범례의 색은 계열 구분에만 사용한다.
+
+[server]
+runOnSave = true
+
+[client]
+# 고객 화면처럼 보이게 Deploy·개발자 메뉴를 숨긴다. ⋮ → Settings(다크 모드)는 남는다.
+toolbarMode = "viewer"
+
+[theme]
+font = "'IBM Plex Sans KR':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+headingFont = "'IBM Plex Sans KR':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@600;700&display=swap"
+baseFontSize = 17
+baseFontWeight = 400
+baseRadius = "12px"
+buttonRadius = "medium"
+showWidgetBorder = true
+showSidebarBorder = false
+linkUnderline = false
+headingFontSizes = ["2.6rem", "1.85rem", "1.4rem", "1.2rem", "1.05rem", "1rem"]
+headingFontWeights = [700, 700, 700, 600, 600, 600]
+greenColor = "#16A34A"
+orangeColor = "#D97706"
+redColor = "#DC2626"
+blueColor = "#2563EB"
+grayColor = "#64748B"
+
+[theme.light]
+primaryColor = "#005BFF"
+redTextColor = "#C62828"
+backgroundColor = "#F3F7FC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0D1930"
+borderColor = "#D5E0EE"
+linkColor = "#405F88"
+dataframeHeaderBackgroundColor = "#C4D0DE"
+dataframeBorderColor = "#A7B4C4"
+chartCategoricalColors = ["#0066FF", "#FF6800", "#8B20FF", "#00A884", "#F00050", "#B48A00", "#21A338", "#008CAE", "#C600BF", "#617087"]
+
+[theme.light.sidebar]
+backgroundColor = "#34445B"
+secondaryBackgroundColor = "#29384D"
+textColor = "#F7F8FA"
+borderColor = "#63758F"
+primaryColor = "#FFB340"
+grayTextColor = "#F7F8FA"
+
+[theme.dark]
+primaryColor = "#005BFF"
+redTextColor = "#FF737A"
+backgroundColor = "#20242B"
+secondaryBackgroundColor = "#292E36"
+textColor = "#F0F2F5"
+borderColor = "#46566C"
+linkColor = "#9FC3F2"
+dataframeHeaderBackgroundColor = "#40516A"
+dataframeBorderColor = "#647185"
+greenColor = "#42B883"
+orangeColor = "#E89B45"
+redColor = "#E46C73"
+blueColor = "#3694FF"
+violetColor = "#BB57FF"
+yellowColor = "#FFD600"
+grayColor = "#A0A8B4"
+chartCategoricalColors = ["#3694FF", "#FF9500", "#BB57FF", "#00DBA5", "#FF4275", "#FFD600", "#62E23A", "#00C8E8", "#FF55DB", "#ADB8CA"]
+
+[theme.dark.sidebar]
+backgroundColor = "#34445B"
+secondaryBackgroundColor = "#29384D"
+textColor = "#F7F8FA"
+borderColor = "#63758F"
+primaryColor = "#FFB340"
+grayTextColor = "#F7F8FA"

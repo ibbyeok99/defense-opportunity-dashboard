@@ -1,0 +1,11 @@
+# Community Cloud 고객 화면. 로컬 DB API는 requirements-db.txt도 설치한다.
+streamlit==1.64.0
+pandas==3.0.6
+pyarrow==25.0.1
+altair==6.3.0
+matplotlib==3.11.2
+plotly==6.9.0
+openpyxl==3.1.5
+requests>=2.32,<3
+pypdf>=5,<7
+tzdata>=2025.2

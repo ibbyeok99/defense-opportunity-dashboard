@@ -1,0 +1,307 @@
+"""화면별 결과 계산 — 필터 묶음(service/filters.py)을 받아 표·숫자를 돌려준다. 화면을 그리지 않는다.
+
+화면(app_pages)은 여기서 받은 결과를 view/ 조각으로 그리기만 한다.
+"""
+
+from __future__ import annotations
+
+from collections import Counter
+from datetime import datetime, timedelta
+
+import pandas as pd
+
+from service import data, metrics
+from service.eligibility import judge, split_values
+from service.filters import YEAR_RANGE, ItemFilter, NoticeFilter, OverviewFilter, Profile
+
+
+def _agency_col(role: str) -> str:
+    return "demand_agency_name" if role == "수요기관" else "notice_agency_name"
+
+
+def _agency_options(df: pd.DataFrame) -> dict[str, list[str]]:
+    """기관 역할별 선택지(많이 나온 순)."""
+    return {"수요기관": df["demand_agency_name"].value_counts().index.tolist(),
+            "공고기관": df["notice_agency_name"].value_counts().index.tolist()}
+
+
+# ---- 공고 ----
+def notice_agency_options() -> dict[str, list[str]]:
+    return _agency_options(data.notices())
+
+
+def agency_option_labels() -> dict[str, dict[str, str]]:
+    """필터 값은 유지하고 검색창에서만 기관명 (코드)를 표시한다."""
+    frame = data.notices()
+    labels = {}
+    for role, stem in (("수요기관", "demand"), ("공고기관", "notice")):
+        name_col, code_col = f"{stem}_agency_name", f"{stem}_agency_code"
+        mapping = {}
+        if code_col in frame:
+            for name, rows in frame.groupby(name_col, sort=False):
+                codes = rows[code_col].dropna().astype(str).drop_duplicates().tolist()
+                mapping[name] = f"{name} ({', '.join(codes)})" if codes else name
+                mapping.update({code: f"{name} ({code})" for code in codes})
+        labels[role] = mapping
+    return labels
+
+
+def find_notices(f: NoticeFilter, profile: Profile, now: datetime) -> pd.DataFrame:
+    """조건에 맞는 공고 + 참여 판단(status)·남은 날(dday). 마감 전은 마감이 가까운 순, 최근 1개월은 최근 공고 순."""
+    df = data.notices()
+    out = df[df["procurement_type"].isin(f.types)]
+    if f.item:
+        out = out[out["item_code"] == f.item]
+    kw = f.keyword.strip()
+    if kw:  # 공고명 또는 분류 번호
+        out = out[out["notice_name"].str.contains(kw, case=False, na=False, regex=False)
+                  | out["item_code"].str.contains(kw, na=False, regex=False)]
+    if f.status == "마감 전":
+        out = out[out["bid_close_date"] >= now]
+        limit = {"7일 안": 7, "30일 안": 30}.get(f.deadline)
+        if limit:
+            out = out[out["bid_close_date"] < now + timedelta(days=limit)]
+    elif f.status == "최근 1개월":
+        out = out[out["notice_date"] >= now - timedelta(days=30)]
+    if f.date_from:
+        out = out[out["notice_date"] >= pd.Timestamp(f.date_from)]
+    if f.date_to:
+        out = out[out["notice_date"] < pd.Timestamp(f.date_to) + pd.Timedelta(days=1)]
+    if f.agencies:
+        out = out[data.agency_mask(out, f.agency_role, f.agencies)]
+    out = out.copy()
+    out["status"] = [judge(r, profile.region, list(profile.licenses))[0] for r in out.to_dict("records")]
+    if f.judge:
+        out = out[out["status"].isin(f.judge)]
+    out["dday"] = (out["bid_close_date"].dt.normalize() - pd.Timestamp(now.date())).dt.days
+    return out.sort_values(["bid_close_date", "notice_date"], ascending=[f.status == "마감 전", False])
+
+
+def only_status(found: pd.DataFrame, statuses: list[str]) -> pd.DataFrame:
+    """찾은 공고 중 참여 판단이 statuses인 것만."""
+    return found[found["status"].isin(statuses)]
+
+
+def notice_summary(found: pd.DataFrame) -> dict:
+    """찾은 공고 요약: 판단별 건수, 7일 안 마감 수, 조건 자료 미확인 비율."""
+    unknown = ((found["license_state"] == "미확인") | (found["region_state"] == "미확인")).mean() if len(found) else 0
+    return {"counts": found["status"].value_counts().to_dict(),
+            "urgent": int(((found["dday"] >= 0) & (found["dday"] <= 7)).sum()),
+            "unknown_share": float(unknown)}
+
+
+def notice_detail(notice_id: str, profile: Profile) -> dict | None:
+    """공고 한 건 + 참여 조건 비교표 + 이 분류의 과거 경쟁(최근 연도)·계약까지 일수."""
+    df = data.notices()
+    rows = df[df["notice_id"] == notice_id]
+    if rows.empty:
+        return None
+    n = rows.iloc[0]
+    status, lic, reg = judge(n.to_dict(), profile.region, list(profile.licenses))
+    conditions = pd.DataFrame([
+        ["면허", ", ".join(split_values(n["license_values"])) or n["license_state"],
+         ", ".join(profile.licenses) or "미입력", lic.status, lic.reason],
+        ["지역", ", ".join(split_values(n["region_values"])) or n["region_state"], ", ".join(profile.region) or "미입력",
+         reg.status, reg.reason],
+    ], columns=["구분", "요구 조건", "내 조건", "판단", "이유"])
+    comp = data.competition_levels().set_index("item_code")
+    return {"notice": n, "status": status, "conditions": conditions,
+            "competition": comp.loc[n["item_code"]] if n["item_code"] in comp.index else None,
+            "contract_days": data.contract_days().get(n["item_code"]),
+            "category": data.category_display(n["item_code"], n["category_value"])}
+
+
+# ---- 품목 분석 ----
+def item_agency_options(code: str) -> dict[str, list[str]]:
+    ev = metrics.events()
+    return _agency_options(ev[ev["item_code"] == code])
+
+
+def _split_counts(series: pd.Series, top: int = 10) -> pd.DataFrame:
+    c = Counter(v.strip() for s in series.dropna() for v in s.split("|") if v.strip())
+    return pd.DataFrame(c.most_common(top), columns=["조건", "공고 수"])
+
+
+def _contract_year_summary(types: list[str], years: tuple[int, int], items: list[str] | None = None) -> pd.DataFrame:
+    """계약일 기준 계약 통계. lifecycle의 공고 단위 계약값은 개찰마다 반복되므로 사용하지 않는다."""
+    market = data.category_market()
+    selected = market[market["procurement_type"].isin(types)
+                      & market["year"].between(years[0], years[1])].copy()
+    if items:
+        selected = selected[selected["item_code"].isin(items)]
+    if selected.empty:
+        return pd.DataFrame(columns=["year", "contract_count", "contract_amount"])
+    return (selected.groupby("year", as_index=False)
+            .agg(contract_count=("contract_count", "sum"),
+                 contract_amount=("contract_amount", lambda values: values.sum(min_count=1))))
+
+
+def _contract_type_year_summary(types: list[str], years: tuple[int, int],
+                                items: list[str] | None = None) -> pd.DataFrame:
+    """계약일·조달유형 기준 요약. 금액은 국내 원화 계약만 해당한다."""
+    market = data.category_market()
+    selected = market[market["procurement_type"].isin(types)
+                      & market["year"].between(years[0], years[1])].copy()
+    if items:
+        selected = selected[selected["item_code"].isin(items)]
+    if selected.empty:
+        return pd.DataFrame(columns=["year", "procurement_type", "contract_count", "contract_amount"])
+    return (selected.groupby(["year", "procurement_type"], as_index=False)
+            .agg(contract_count=("contract_count", "sum"),
+                 contract_amount=("contract_amount", lambda values: values.sum(min_count=1))))
+
+
+def item_event_counts(f: ItemFilter) -> dict[str, int]:
+    """분류 선택칸도 본문과 같은 개찰 원천·기간·기관·금액 조건으로 센다."""
+    ev = metrics.filter_events(metrics.events(), years=f.years, agencies=list(f.agencies),
+                               agency_role=f.agency_role, amount_bins=list(f.amounts))
+    return ev.groupby("item_code").size().to_dict()
+
+
+def item_view(code: str, f: ItemFilter, now: pd.Timestamp) -> dict:
+    """분류 하나의 요약·연도별 지표·진입 조건·낙찰 업체. 기관·금액 필터는 개찰 1건 단위로 다시 계산한다."""
+    ev_all = metrics.events()
+    ev = metrics.filter_events(ev_all[ev_all["item_code"] == code], years=f.years, agencies=list(f.agencies),
+                               agency_role=f.agency_role, amount_bins=list(f.amounts))
+    detail_filter = bool(f.agencies or f.amounts)          # EDA 집계로는 반영할 수 없는 필터
+    nt_all = data.notices().query("item_code == @code")
+    nt = nt_all[nt_all["notice_date"].dt.year.between(f.years[0], f.years[1])]
+    if f.agencies:
+        nt = nt[data.agency_mask(nt, f.agency_role, f.agencies)]
+    out = {"ev": ev, "detail_filter": detail_filter, "filtered": detail_filter or tuple(f.years) != YEAR_RANGE,
+           "open_n": int((nt_all["bid_close_date"] >= now).sum()),
+           "level": data.competition_levels().set_index("item_code")["level"].get(code, ""),
+           "level_year": data.competition_levels().set_index("item_code")["year"].get(code)}
+    if ev.empty:
+        return out
+    y0, y1 = f.years
+    hist = data.category_market().query("item_code == @code and @y0 <= year <= @y1").sort_values("year")
+    mysql_source = data.SOURCE in {"mysql", "api"}
+    contract_supported = not detail_filter if mysql_source else True
+    contract_year = (_contract_year_summary([str(hist["procurement_type"].iloc[0])] if len(hist) else [],
+                                             f.years, [code]) if mysql_source and contract_supported else
+                     pd.DataFrame(columns=["year", "contract_count", "contract_amount"]))
+    contract_type_year = (_contract_type_year_summary(
+        [str(hist["procurement_type"].iloc[0])] if len(hist) else [], f.years, [code])
+        if mysql_source and contract_supported else
+        pd.DataFrame(columns=["year", "procurement_type", "contract_count", "contract_amount"]))
+    yearly = metrics.by_year(ev)
+    if mysql_source and contract_supported:
+        yearly = yearly.drop(columns=["contract_count", "contract_amount"], errors="ignore").merge(
+            contract_year, on="year", how="left", validate="one_to_one")
+    elif mysql_source:
+        yearly["contract_count"] = pd.NA
+        yearly["contract_amount"] = pd.NA
+    sup = data.suppliers().query("item_code == @code and @y0 <= year <= @y1")
+    if len(sup):
+        agg = sup.groupby("supplier_name", as_index=False).agg(award_count=("award_count", "sum"))
+        agg["count_share"] = agg["award_count"] / agg["award_count"].sum()
+        top_sup = agg.sort_values("award_count", ascending=False).head(15)
+    else:
+        top_sup = pd.DataFrame()
+    summary = metrics.summarize(ev)
+    if mysql_source and contract_supported:
+        summary["contract_count"] = int(contract_year["contract_count"].sum()) if len(contract_year) else 0
+        summary["contract_amount"] = contract_year["contract_amount"].sum(min_count=1) if len(contract_year) else None
+    elif mysql_source:
+        summary["contract_count"] = None
+        summary["contract_amount"] = None
+    out.update({
+        "summary": summary,
+        "yearly": yearly,
+        "contract_year": contract_year,
+        "top3": hist["top3_share_count"].iloc[-1] if len(hist) and not detail_filter else None,
+        "top3_year": int(hist["year"].iloc[-1]) if len(hist) and not detail_filter else None,
+        "licenses": _split_counts(nt.loc[nt["license_state"] == "제한있음", "license_values"]),
+        "regions": _split_counts(nt.loc[nt["region_state"] == "제한있음", "region_values"]),
+        "license_share": nt["license_state"].value_counts(normalize=True).to_dict(),
+        "region_share": nt["region_state"].value_counts(normalize=True).to_dict(),
+        "days": ev["notice_to_contract_days"].dropna(),
+        "top_agencies": nt["demand_agency_name"].value_counts().head(3),
+        "suppliers": top_sup,
+    })
+    # 누적 KPI와 단년 증감을 섞지 않는다. 선택 기간 안 최신 완료 연도를 우선한다.
+    as_of = pd.to_datetime(ev_all["data_as_of"], utc=True, errors="coerce").max()
+    completed_year = as_of.year - 1 if pd.notna(as_of) else now.year - 1
+    kpi_year = min(y1, completed_year) if y0 <= completed_year else y1
+    comparison_ev = metrics.filter_events(ev_all[ev_all["item_code"] == code],
+        years=(kpi_year - 1, kpi_year), agencies=list(f.agencies), agency_role=f.agency_role,
+        amount_bins=list(f.amounts))
+    kpi_hist = data.category_market().query("item_code == @code")
+    snapshots = []
+    for year in (kpi_year, kpi_year - 1):
+        sample = comparison_ev[comparison_ev["year"] == year]
+        snapshot = metrics.summarize(sample)
+        if mysql_source and contract_supported:
+            contract_row = contract_year[contract_year["year"] == year]
+            snapshot["contract_count"] = int(contract_row["contract_count"].sum()) if len(contract_row) else 0
+            snapshot["contract_amount"] = (contract_row["contract_amount"].sum(min_count=1)
+                                            if len(contract_row) else None)
+        elif mysql_source:
+            snapshot["contract_count"] = None
+            snapshot["contract_amount"] = None
+        if sample.empty:
+            snapshot = {key: None for key in snapshot}
+        rows = kpi_hist[kpi_hist["year"] == year]
+        snapshot["top3"] = rows["top3_share_count"].iloc[-1] if len(rows) and not detail_filter else None
+        snapshots.append(snapshot)
+    out.update(kpi_year=kpi_year, kpi_partial=kpi_year > completed_year,
+               kpi_current=snapshots[0], kpi_previous=snapshots[1])
+    return out
+
+
+# ---- 시장 개요 ----
+def overview_agency_options() -> dict[str, list[str]]:
+    return _agency_options(metrics.events())
+
+
+def overview_view(f: OverviewFilter) -> dict:
+    """시장 개요: 공고 수(공고 표)와 개찰·계약 지표(개찰 1건 단위 재계산)."""
+    types = list(f.types) or list(data.TYPES)
+    ev = metrics.filter_events(metrics.events(), years=f.years, types=types, items=list(f.items),
+                               agencies=list(f.agencies), agency_role=f.agency_role, amount_bins=list(f.amounts),
+                               outcomes=list(f.outcomes), region=f.region)
+    nt_all = data.notices()
+    nt = nt_all[nt_all["notice_date"].dt.year.between(f.years[0], f.years[1]) & nt_all["procurement_type"].isin(types)]
+    if f.items:
+        nt = nt[nt["item_code"].isin(f.items)]
+    if f.agencies:
+        nt = nt[data.agency_mask(nt, f.agency_role, f.agencies)]
+    if f.region:
+        ok = nt["region_values"].fillna("").str.split("|").map(lambda xs: f.region in [x.strip() for x in xs])
+        nt = nt[(nt["region_state"] == "조건없음") | ((nt["region_state"] == "제한있음") & ok)]
+    mysql_source = data.SOURCE in {"mysql", "api"}
+    contract_supported = not (f.agencies or f.amounts or f.outcomes or f.region) if mysql_source else True
+    contract_year = (_contract_year_summary(types, f.years, list(f.items))
+                     if mysql_source and contract_supported else
+                     pd.DataFrame(columns=["year", "contract_count", "contract_amount"]))
+    if mysql_source and contract_supported:
+        contract_type_year = _contract_type_year_summary(types, f.years, list(f.items))
+    elif mysql_source:
+        contract_type_year = pd.DataFrame(columns=["year", "procurement_type", "contract_count", "contract_amount"])
+    else:
+        contract_type_year = metrics.by_year(ev, ["procurement_type"])
+    notice_year = (nt.assign(year=nt["notice_date"].dt.year).groupby(["year", "procurement_type"]).size()
+                   .rename("notice_count").reset_index())
+    share = nt.groupby("procurement_type").size().rename("notice_count").reset_index()
+    share["비중"] = share["notice_count"] / max(share["notice_count"].sum(), 1)
+    top_cat = (ev.groupby(["item_code", "procurement_type"]).size().rename("event_count").reset_index()
+               .nlargest(10, "event_count"))
+    top_cat["분류"] = top_cat["item_code"].map(data.category_display)
+    summary = metrics.summarize(ev)
+    if mysql_source and contract_supported:
+        summary["contract_count"] = int(contract_year["contract_count"].sum()) if len(contract_year) else 0
+        summary["contract_amount"] = contract_year["contract_amount"].sum(min_count=1) if len(contract_year) else None
+    elif mysql_source:
+        summary["contract_count"] = None
+        summary["contract_amount"] = None
+    return {
+        "types": types, "ev": ev, "notice_total": len(nt), "summary": summary,
+        "contract_supported": contract_supported, "contract_year": contract_year,
+        "contract_type_year": contract_type_year,
+        "notice_year": notice_year, "event_year": metrics.by_year(ev, ["procurement_type"]), "share": share,
+        "top_agencies": nt[_agency_col(f.agency_role)].value_counts().head(10).rename_axis("agency")
+        .reset_index(name="notice_count"),
+        "top_categories": top_cat,
+        "empty": ev.empty and nt.empty,
+    }
