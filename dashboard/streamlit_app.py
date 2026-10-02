@@ -56,7 +56,8 @@ def admin_login():
 
 pages = {
     "": [
-        st.Page("app_pages/notices.py", title=PAGE_LABELS["notices"], icon=":material/campaign:", default=True),
+        st.Page("app_pages/home.py", title="FRONTLINE DATA", icon=":material/home:", default=True),
+        st.Page("app_pages/notices.py", title=PAGE_LABELS["notices"], icon=":material/campaign:", url_path="notices"),
         st.Page("app_pages/item.py", title=PAGE_LABELS["item"], icon=":material/insights:", url_path="item"),
         st.Page("app_pages/overview.py", title=PAGE_LABELS["overview"], icon=":material/dashboard:", url_path="overview"),
         st.Page("app_pages/favorites.py", title=PAGE_LABELS["favorites"], icon=":material/star:", url_path="favorites"),
@@ -70,10 +71,15 @@ if st.session_state.is_admin:
                    st.Page("app_pages/quality.py", title="데이터 기준", icon=":material/verified:")]
 page = st.navigation(pages, position="hidden")
 
+# 홈은 DB 조회·검색 위젯·관리자 진입·공통 헤더 없이 독립적으로 표시한다.
+if page.url_path == "":
+    page.run()
+    st.stop()
+
 style.apply(page.title)  # 화면별 색 전환 없이 같은 브랜드·사이드바 구조를 유지한다.
 sidebar_interactions.mount()
 table_interactions.mount()
-app_header(pages[""] + pages.get("관리", []), page)
+app_header(pages[""][1:] + pages.get("관리", []), page)
 # 화면별 필터 자리(view.widgets.filter_area)와 관리자 버튼·브라우저 저장을 page.run() 전에 그린다.
 # 그래야 화면이 st.stop()으로 멈춰도(예: 조달 유형 미선택) 빠지지 않는다.
 st.session_state._filter_slot = st.sidebar.container(key="sidebar_filter_body")

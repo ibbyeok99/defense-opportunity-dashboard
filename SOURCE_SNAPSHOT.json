@@ -155,7 +155,7 @@
     },
     {
       "path": "dashboard/streamlit_app.py",
-      "sha256": "5a4d498600b08efba578779ff622e0a88dc004b5a1e37c9bc88c1b2915d7e0e9"
+      "sha256": "85aee4feb668534712e66d2d09d94a3a24b0e393e76cf0ab24be1fdcfe9ea81b"
     },
     {
       "path": "dashboard/view/__init__.py",
@@ -248,6 +248,25 @@
     {
       "path": "README.md",
       "sha256": "b9e0b5ecb5806c1a8db3157f00f67f7e03d0f377d0030bb1ba995592996143ac"
+    },
+    {
+      "path": "dashboard/app_pages/home.py",
+      "sha256": "2ced94d80a5e5d2cf55418a1ea61ce07547d4ea398c94e12e885fea9cb7be399"
+    },
+    {
+      "path": "dashboard/view/home.py",
+      "sha256": "10ef092d17b65acdb3a99e6bb432f09f60dce35b201e88e70b0e6ca297b89228"
+    },
+    {
+      "path": "dashboard/assets/videos/frontline_hero.mp4",
+      "sha256": "f33f875bf3f258d7125d215512e0cd0c24a215989c8a671fde79622dc73c854d"
+    }
+  ],
+  "updates": [
+    {
+      "author": "Codex",
+      "date": "2026-10-02",
+      "scope": "Home page only: local working-tree streamlit_app.py, app_pages/home.py, view/home.py and H.264 video. Notice detail unchanged."
     }
   ]
 }
