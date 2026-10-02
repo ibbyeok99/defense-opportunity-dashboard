@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import streamlit as st
 
+from view.assets import header_background_url
+
 # 사이드바 필터 시작 위치. 사용자가 이 값만 바꿔 조정할 수 있다(단위: px).
-SIDEBAR_FILTER_TOP_PX = 50
+SIDEBAR_FILTER_TOP_PX = 75
 
 # 상단은 기존 테마색, 하단은 흰색을 12%만 덧입힌다. 위치·위젯 색에는 적용하지 않는다.
 SIDEBAR_GRADIENT_BOTTOM_OPACITY = 0.12
@@ -22,6 +24,9 @@ APP_TITLE_OFFSET_X_PX = -21
 APP_TITLE_OFFSET_Y_PX = 0
 # 공통 상단 영역 시작점. 기존 3.75rem의 절반이며, 도구 모음 높이도 함께 맞춘다.
 APP_HEADER_TOP_REM = 1.875
+
+# 사용자 제공 이미지의 장식 레이어만 흐리게 한다. 제목·메뉴의 불투명도는 유지한다.
+APP_HEADER_ART_OPACITY = 0.62
 
 # 후보3 기준의 공통 카드 스타일. 사용자 글자 크기·필터 시작 위치는 보존한다.
 SIDEBAR_WIDTH_PX = 288
@@ -45,6 +50,28 @@ def apply(_page_title: str = ""):
     caption = "light-dark(#64748B, #B7C4D7)"
     header_background = f"light-dark({st.get_option('theme.light.backgroundColor') or '#F3F7FC'}, {st.get_option('theme.dark.backgroundColor') or '#20242B'})"
     shadow = "0 6px 20px light-dark(rgba(39,70,111,.045), rgba(0,0,0,.12))"
+    header_art = header_background_url()
+    header_art_css = f"""
+[data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header) {{
+  margin-inline: -3rem !important; width: calc(100% + 6rem) !important; padding-inline: 3.4rem !important;
+}}
+[data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header)::before {{
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: url("{header_art}"); background-size: cover; background-position: right center;
+  opacity: {APP_HEADER_ART_OPACITY};
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.25) 32%, #000 65%), linear-gradient(180deg, transparent 0%, #000 12%);
+  mask-composite: intersect;
+}}
+.st-key-app_sticky_header {{ position: relative; min-height: 190px; padding-top: 38px; gap: 0; justify-content: space-between; border-bottom: 1px solid {border}; }}
+.st-key-page_heading_app > [data-testid="stLayoutWrapper"]:has(> .st-key-exports_app) {{ position: absolute; right: 0; top: -12px; }}
+.st-key-app_sticky_header .st-key-page_heading_app h1, .st-key-app_sticky_header .st-key-page_menu {{ transform: none; }}
+@media (max-width: 768px) {{
+  [data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header) {{
+    margin-inline: -1rem !important; width: calc(100% + 2rem) !important; padding-inline: 1rem !important;
+  }}
+  .st-key-app_sticky_header {{ min-height: 170px; padding-top: 14px; gap: .5rem; }}
+}}
+""" if header_art else ""
     st.html(f"""<style>
 /* 사이드바 배경만 아래로 갈수록 미세하게 밝아진다. 두 모드에서 같은 효과를 사용한다. */
 {side} {{
@@ -61,6 +88,7 @@ def apply(_page_title: str = ""):
 }}
 {side} [data-testid="stSidebarHeader"] {{ display: none !important; }}
 {side} [data-testid="stSidebarUserContent"] {{
+  position: relative;
   padding-top: {SIDEBAR_FILTER_TOP_PX}px !important; padding-bottom: 1rem !important;
   margin-block: 0; flex: 1; min-height: 0; overflow: hidden;
 }}
@@ -75,6 +103,12 @@ def apply(_page_title: str = ""):
 }}
 /* 조건의 펼침 여부와 무관하게 같은 상단 위치에서 시작한다. */
 {side} .st-key-sidebar_filter_body {{ margin-block: 0; flex: 0 0 auto; height: auto; }}
+/* 로고는 필터 스크롤 밖의 상단 여백에만 배치한다. 원본 PNG는 보존한다. */
+{side} [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_brand) {{ position: absolute; top: 16px; left: calc(50% - 112px); width: 224px; flex: none; }}
+.st-key-sidebar_brand {{ position: relative; overflow: hidden; width: 224px !important; aspect-ratio: var(--sidebar-logo-aspect); }}
+.st-key-sidebar_brand [data-testid="stImage"] {{ position: absolute; left: var(--sidebar-logo-left); top: var(--sidebar-logo-top); width: var(--sidebar-logo-width) !important; max-width: none; }}
+.st-key-sidebar_brand [data-testid="stImage"] img {{ width: 100% !important; height: auto; }}
+.st-key-sidebar_brand [data-testid="stElementContainer"], .st-key-sidebar_brand [data-testid="stFullScreenFrame"] > div {{ position: static; width: 100%; }}
 {side} [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_actions) {{ flex: 0 0 auto; }}
 {side} [data-testid="stExpander"] summary {{ min-height: 2.4rem !important; }}
 /* 상세·회사 조건: 제목·아이콘은 흰색, 실제 열림 상태의 ▲/▼만 주황색. */
@@ -124,6 +158,7 @@ def apply(_page_title: str = ""):
   background: {header_background};
   padding-inline: 21px; margin-inline: -21px; width: calc(100% + 42px); max-width: none;
 }}
+{header_art_css}
 /* 높이를 고정하지 않아 좁은 화면에서 제목·메뉴가 줄바꿈해도 본문 공간을 확보한다. */
 .st-key-page_heading_app h1 {{
   padding-top: 0;
@@ -131,6 +166,14 @@ def apply(_page_title: str = ""):
   word-break: keep-all;
   overflow-wrap: normal;
 }}
+.st-key-app_title_block {{ gap: 0; }}
+.st-key-app_title_block h1 {{ padding-bottom: 0; }}
+.st-key-app_title_block [data-testid="stMarkdownContainer"] {{ margin-block: 0 !important; }}
+.st-key-app_title_block, .st-key-app_subtitle {{ height: auto !important; }}
+.st-key-app_title_block > [data-testid="stElementContainer"],
+.st-key-app_title_block > [data-testid="stLayoutWrapper"] {{ flex: 0 0 auto; min-height: min-content; }}
+.st-key-app_subtitle {{ padding-top: 0; }}
+.st-key-app_subtitle p {{ font-size: 1.2rem; line-height: 1.4; font-weight: 400; color: light-dark(#415A77, #B7C4D7); margin-block: 0; }}
 /* 상단 탐색 메뉴의 시작점도 공통 대제목의 왼쪽 이동값에 맞춘다. */
 .st-key-page_menu {{ transform: translateX({APP_TITLE_OFFSET_X_PX}px); }}
 /* 좁은 화면은 본문 왼쪽 여백이 17px이므로 제목 이동을 최대 8px로 제한한다. */
@@ -184,7 +227,7 @@ def apply(_page_title: str = ""):
 /* 사용자 변경 승인: 분류명·기간 설명도 검색 조건·지표 카드의 왼쪽 축에 맞춘다. */
 .st-key-item_context {{ margin-left: 0; width: 100%; }}
 /* 사용자 승인: 진입 요약만 이미지처럼 2단·가로 구분선. 설명은 i 도움말에 보존한다. */
-.st-key-entry_summary {{ background: {surface}; border-color: {border} !important; border-radius: 12px; padding: 16px 20px !important; box-shadow: {shadow}; height: auto; flex: 0 0 auto; }}
+.st-key-entry_summary {{ background: {surface}; border-color: {border} !important; border-radius: 12px; padding: 22px 20px !important; box-shadow: {shadow}; height: auto; flex: 0 0 auto; }}
 .st-key-entry_summary > div,
 .st-key-entry_summary [data-testid="stLayoutWrapper"],
 .st-key-entry_summary [data-testid="stElementContainer"],
@@ -192,9 +235,9 @@ def apply(_page_title: str = ""):
 .st-key-entry_summary > div {{ flex: 0 0 auto; }}
 .st-key-entry_summary [data-testid="stMarkdownContainer"] {{ margin-block: 0 !important; }}
 .st-key-entry_summary h3 {{ font-size: 1.25rem; font-weight: 700; padding-block: 0; margin: 0; }}
-.st-key-entry_summary_grid {{ border-top: 1px solid {border}; }}
+.st-key-entry_summary_grid {{ border-top: 1px solid {border}; margin-top: 8px; }}
 .st-key-entry_summary_half_1 {{ border-left: 1px solid {border}; }}
-.st-key-entry_summary [class*="st-key-entry_row_"] {{ min-height: 54px; margin-block: 0 !important; padding: 12px 16px; border-bottom: 1px solid {border}; flex: 0 0 auto; }}
+.st-key-entry_summary [class*="st-key-entry_row_"] {{ min-height: 58px; margin-block: 0 !important; padding: 14px 16px; border-bottom: 1px solid {border}; flex: 0 0 auto; }}
 .st-key-entry_summary [class*="st-key-entry_label_"], .st-key-entry_summary [class*="st-key-entry_value_"] {{ min-width: 0; height: auto; }}
 .st-key-entry_summary [class*="st-key-entry_label_"] p {{ font-weight: 500; color: {caption}; }}
 .st-key-entry_summary [class*="st-key-entry_value_"] strong {{ font-weight: 600; }}
@@ -204,12 +247,12 @@ def apply(_page_title: str = ""):
 .st-key-entry_summary [data-testid="stMarkdownContainer"] p {{ margin: 0; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }}
 .st-key-entry_summary_half_0 > div:last-child [class*="st-key-entry_row_"],
 .st-key-entry_summary_half_1 > div:last-child [class*="st-key-entry_row_"] {{ border-bottom: 0; }}
-.st-key-entry_summary_agencies [class*="st-key-entry_row_"] {{ border-bottom: 0; }}
+.st-key-entry_summary_agencies [class*="st-key-entry_row_"] {{ border-bottom: 0; min-height: 51px; padding-bottom: 7px; }}
 .st-key-entry_summary_agencies {{ border-top: 1px solid {border}; }}
 .st-key-entry_summary_agencies [data-testid="stMarkdownContainer"] p {{ font-size: .92rem; }}
 @container dashboard_main (max-width: 760px) {{
   .st-key-entry_summary_half_1 {{ border-left: 0; padding-left: 0; }}
-  .st-key-entry_summary {{ padding: 14px !important; }}
+  .st-key-entry_summary {{ padding: 20px 14px !important; }}
   .st-key-entry_summary [class*="st-key-entry_row_"] {{ padding-inline: 8px; }}
   .st-key-entry_summary [class*="st-key-entry_row_"] > div:has(> [class*="st-key-entry_label_"]) {{ flex-basis: 145px; width: 145px; }}
   .st-key-entry_summary_half_1 {{ border-top: 1px solid {border}; }}
@@ -220,6 +263,12 @@ def apply(_page_title: str = ""):
 [data-testid="stMainBlockContainer"] {{ padding-inline: 3.1rem; }}
 .st-key-page_menu {{ border-bottom: 1px solid {border}; padding-bottom: 0; margin-bottom: 0; }}
 .st-key-page_menu a p {{ font-size: .95rem; }}
+/* 사용자 탐색은 왼쪽, 관리자·데이터 기준 링크는 오른쪽 끝에 한 묶음으로 유지한다. */
+.st-key-page_menu > div:has(> .st-key-page_menu_management) {{ margin-left: auto; }}
+/* 데이터 기준의 정적 연결률 표는 긴 기준 문구를 자르지 않고 줄바꿈한다. */
+.st-key-card_quality_links table {{ width: 100%; }}
+.st-key-card_quality_links :is(th, td) {{ white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }}
+.st-key-card_quality_checks table {{ width: 100%; }}
 /* 조달 유형만 반투명 선택 채움으로 통일. 단일·복수 선택의 접근성 속성 모두 처리한다. */
 {side} :is(.st-key-nt_types, .st-key-it_type, .st-key-ov_types) button[data-variant="pills"]:is([aria-checked="true"], [aria-pressed="true"]) {{
   background: color-mix(in srgb, {sidebar_accent} 15%, transparent); color: {sidebar_accent}; border-color: {sidebar_accent}; font-weight: 600;
@@ -262,24 +311,31 @@ def apply(_page_title: str = ""):
 [class*="st-key-kpi_"] [data-testid="stMetricValue"] {{ font-size: 2.15rem; font-weight: 700; line-height: 1.2; }}
 [class*="st-key-kpi_"] [data-testid="stMetricDelta"] {{ font-size: .9rem; border-radius: 999px; }}
 [class*="st-key-kpi_"][class*="_it_"] [data-testid="stMetricDelta"] {{ margin-top: 4px; }}
+/* 사용자 승인: 분야별 분석의 네 지표 카드 안쪽 여백만 기존의 1.5배. */
+[data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"]:is(.st-key-kpi_blue_it_0, .st-key-kpi_orange_it_1, .st-key-kpi_violet_it_2, .st-key-kpi_green_it_3) {{ padding: 24px 27px !important; }}
 [class*="st-key-chart_header_"] h3 {{ font-size: 1.2rem; line-height: 1.4; padding-block: 0; margin-block: 0; }}
 [class*="st-key-card_"] [data-testid="stCaptionContainer"] p {{ color: {caption}; font-size: .9rem; line-height: 1.5; }}
 [data-testid="stMainBlockContainer"] [data-testid="stTabs"] [role="tablist"] {{ gap: 1.5rem; border-bottom: 1px solid {border}; }}
 [data-testid="stMainBlockContainer"] [data-testid="stTabs"] [role="tab"] {{ padding-inline: .35rem; font-weight: 600; }}
-.st-key-it_go_notices button {{ min-height: 48px; border-radius: 10px; padding: .65rem 1rem; box-shadow: 0 6px 16px rgba(0,91,255,.12); background-image: linear-gradient(135deg, rgba(255,255,255,.2), rgba(255,255,255,0) 70%); }}
+.st-key-it_go_notices button {{ min-height: 43.2px; border-radius: 10px; padding: .5rem 1.75rem; box-shadow: 0 6px 16px rgba(0,91,255,.12); background-image: linear-gradient(135deg, rgba(255,255,255,.2), rgba(255,255,255,0) 70%); }}
+@supports (width: calc-size(max-content, size * 1.1)) {{
+  .st-key-it_go_notices button {{ width: calc-size(max-content, size * 1.1); max-width: 100%; padding-inline: 1rem; }}
+}}
 .st-key-it_go_notices button:disabled {{ background-image: none; }}
 .st-key-it_go_notices button::after {{ content: "→"; font-size: 1.2rem; margin-left: .35rem; }}
 .st-key-item_context h3 {{ font-size: 1.25rem; line-height: 1.5; padding-block: .2rem; }}
 .st-key-item_context h3 span {{ border-radius: 8px; }}
 .st-key-item_category_heading {{
-  background: light-dark(#E7EEF8, #354155); border-radius: 8px;
-  padding: .25rem .55rem; gap: .5rem; max-width: 100%;
+  background: light-dark(#E1EBF9, #354155); border-radius: 8px;
+  padding: .4rem .85rem; gap: .65rem; max-width: 100%; align-items: center;
 }}
 .st-key-item_category_heading [data-testid="stMarkdownContainer"] {{ margin-bottom: 0; min-width: 0; }}
 .st-key-item_category_heading > [data-testid="stLayoutWrapper"]:has(h3) {{ flex: 1 1 auto; min-width: 0; }}
-.st-key-item_category_heading h3 {{ padding-block: 0; margin-block: 0; }}
-.st-key-item_procurement_icon {{ width: 40px; flex-shrink: 0; border-radius: 6px; background: #E7EEF8; }}
-.st-key-item_context {{ margin-bottom: -.5rem; }}
+.st-key-item_category_heading h3 {{ font-size: 1.35rem; font-weight: 600; line-height: 1.4; padding-block: 0; margin-block: 0; word-break: keep-all; overflow-wrap: anywhere; }}
+.st-key-item_procurement_icon {{ width: 36px !important; flex-shrink: 0; border-radius: 6px; background: light-dark(#E1EBF9, #354155); }}
+.st-key-item_procurement_icon img {{ width: 36px; height: 36px; }}
+.st-key-item_context {{ margin-top: -12px; margin-bottom: -.5rem; }}
+.st-key-item_context_row {{ margin-top: 4px; }}
 /* 검색 조건만 보조 정보로 부드럽게 표시. opacity/filter는 자식 글씨까지 흐려져 사용하지 않는다. */
 .st-key-notice_filter_summary, [class*="st-key-search_filter_summary_"] {{
   background: light-dark(rgba(235,243,255,.55), rgba(41,55,77,.55));
@@ -310,8 +366,12 @@ def apply(_page_title: str = ""):
 [class*="st-key-search_filter_summary_"] [data-testid="stCaptionContainer"],
 .st-key-notice_results_panel [data-testid="stMarkdownContainer"],
 .st-key-notice_results_panel [data-testid="stCaptionContainer"] {{ margin-block: 0 !important; }}
-[data-testid="stVerticalBlock"][class*="st-key-kpi_"][class*="_nt_"]:not([class*="st-key-kpi_heading_"]) {{
+[data-testid="stVerticalBlock"][class*="st-key-kpi_"]:is([class*="_nt_"], [class*="_ov_"]):not([class*="st-key-kpi_heading_"]) {{
   min-height: 146px !important;
+}}
+/* 시장 규모의 첫 두 그래프만 90% 폭. 카드 경계·제목 위치는 유지한다. */
+:is(.st-key-ov_size_plot_left, .st-key-ov_size_plot_right) {{
+  width: 90%; max-width: 90%; margin-inline: auto;
 }}
 .st-key-notice_results_panel {{
   background: {surface}; border-color: {border} !important; border-radius: 12px;
@@ -319,7 +379,14 @@ def apply(_page_title: str = ""):
 }}
 .st-key-notice_results_heading p {{ margin: 0; font-size: 1.08rem; }}
 .st-key-notice_results_panel [data-testid="stCaptionContainer"] p {{ font-size: .82rem; margin-block: 0; }}
+/* 빈 결과 안내만 세로 중앙 정렬. Markdown의 마지막 문단 여백을 제거한다. */
+.st-key-notice_empty_state [data-testid="stAlertContainer"] {{ min-height: 76px; display: flex; align-items: center; }}
+.st-key-notice_empty_state [data-testid="stAlertContentInfo"] {{ width: 100%; }}
+.st-key-notice_empty_state [data-testid="stAlertContentInfo"] > div {{ align-items: center; }}
+.st-key-notice_empty_state [data-testid="stAlertContentInfo"] > div > div:first-child {{ display: flex; align-items: center; height: auto; top: 0; }}
+.st-key-notice_empty_state [data-testid="stMarkdownContainer"] p:last-child {{ margin-bottom: 0; }}
 @container dashboard_main (max-width: 600px) {{
+  .st-key-item_context_row {{ margin-top: 13px; }}
   .st-key-notice_summary_heading > [data-testid="stLayoutWrapper"]:has(> .st-key-notice_summary_text) {{ flex-basis: calc(100% - 65px); }}
   [class*="st-key-filter_summary_heading_"] > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-filter_summary_text_"]) {{ flex-basis: calc(100% - 65px); }}
   .st-key-notice_results_panel {{ padding: 12px !important; }}
@@ -355,8 +422,8 @@ def apply(_page_title: str = ""):
 }}
 @container dashboard_main (max-width: 900px) {{
   .st-key-table_scroll_hint {{ display: block; }}
-  [data-testid="stHorizontalBlock"]:has([class*="st-key-kpi_"]) {{ flex-wrap: wrap !important; }}
-  [data-testid="stHorizontalBlock"]:has([class*="st-key-kpi_"]) > div {{
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-kpi_"]) {{ flex-wrap: wrap !important; }}
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-kpi_"]) > [data-testid="stColumn"] {{
     flex: 1 1 calc(50% - 1rem) !important;
     width: auto !important;
     max-width: 100% !important;
@@ -364,7 +431,7 @@ def apply(_page_title: str = ""):
   }}
 }}
 @container dashboard_main (max-width: 440px) {{
-  [data-testid="stHorizontalBlock"]:has([class*="st-key-kpi_"]) > div {{
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-kpi_"]) > [data-testid="stColumn"] {{
     flex-basis: 100% !important;
     width: 100% !important;
   }}

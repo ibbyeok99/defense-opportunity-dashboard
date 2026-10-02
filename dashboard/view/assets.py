@@ -1,6 +1,7 @@
 """검증된 로컬 카드 아이콘만 읽는다. PNG 원본과 데이터는 수정하지 않는다."""
 
 import base64
+from PIL import Image
 from html import escape
 from functools import lru_cache
 from pathlib import Path
@@ -57,6 +58,36 @@ def card_icon_html(label: str, *, prefix: str | None = None) -> str | None:
     # 원본의 투명 여백을 CSS 확대만으로 줄인다. 이미지 바이트는 변경하지 않는다.
     return ("<div class='dashboard-kpi-icon' aria-hidden='true'>"
             f"<img src='data:image/png;base64,{encoded}' alt='' /></div>")
+
+
+def header_background_url() -> str | None:
+    """장식용 상단 이미지. 고정 파일만 읽고 누락 시 기존 단색 헤더를 유지한다."""
+    path = ICON_DIRECTORY / "background.png"
+    if not path.is_file():
+        return None
+    encoded = _encoded_icon(path.name, path.stat().st_mtime_ns)
+    return f"data:image/png;base64,{encoded}"
+
+
+def sidebar_brand():
+    """원본 흰색 로고를 native 이미지로 표시하고 투명 여백만 화면에서 숨긴다."""
+    import streamlit as st
+    path = ICON_DIRECTORY / "logo_white.png"
+    if not path.is_file():
+        return
+    with Image.open(path) as image:
+        # 낮은 알파의 고립 픽셀은 로고 바깥 여백 계산에 포함하지 않는다.
+        bbox = (image.getchannel("A").point(lambda alpha: 255 if alpha >= 200 else 0).getbbox()
+                if "A" in image.getbands() else None)
+        left, top, right, bottom = bbox or (0, 0, *image.size)
+        width, height = right - left, bottom - top
+        crop_style = ("<style>.st-key-sidebar_brand {"
+                      f"--sidebar-logo-aspect:{width}/{height};--sidebar-logo-width:{image.width / width * 100:.6f}%;"
+                      f"--sidebar-logo-left:{-left / width * 100:.6f}%;--sidebar-logo-top:{-top / height * 100:.6f}%;"
+                      "}</style>")
+    st.html(crop_style)
+    with st.sidebar.container(key="sidebar_brand", width=224):
+        st.image(str(path), width="stretch")
 
 
 def procurement_icon_path(procurement_type: str) -> Path | None:

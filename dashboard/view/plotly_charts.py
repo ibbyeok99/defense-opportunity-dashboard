@@ -137,8 +137,14 @@ def bar_figure(frame, category, value, *, category_title="연도", value_title,
         fig.add_trace(go.Bar(**kwargs, name=str(name), marker_color=colors[index % len(colors)],
                              hovertemplate=f"{category_title or '분류'}: %{{{'y' if horizontal else 'x'}}}<br>{value_title}: %{{{'x' if horizontal else 'y'}:{',.0f' if integer else ',.1f'}}}<extra>{name}</extra>"))
     categorical = _axis(category_title, categories, category=True)
+    if len(categories) == 1:
+        # 범주 1개는 중앙의 17.5% 폭으로 표시한다. 가짜 범주/데이터를 추가하지 않는다.
+        for trace in fig.data:
+            trace.width = 0.35
+        categorical.update(range=[-1, 1], autorange=False)
     if horizontal:
-        categorical["autorange"] = "reversed"
+        if len(categories) != 1:
+            categorical["autorange"] = "reversed"
         categorical.update(tickmode="array", tickvals=categories,
                            ticktext=[str(c) if len(str(c)) <= 18 else str(c)[:17] + "…" for c in categories])
         if wrap_labels:
@@ -261,7 +267,7 @@ def donut_figure(frame, *, height=CHART_H):
                       font=dict(family="IBM Plex Sans KR, sans-serif", size=14),
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                       margin=dict(l=10, r=14, t=56, b=12),
-                      legend=dict(orientation="h", y=1.08, yanchor="bottom", x=.5, xanchor="center"),
+                      legend=dict(orientation="h", y=1.08, yanchor="bottom", x=0, xanchor="left"),
                       annotations=[dict(x=.5, y=.5, xref="paper", yref="paper", showarrow=False, align="center",
                                         # 큰 수치 기준으로 Plotly의 주석 영역도 확보한다.
                                         font=dict(size=DONUT_VALUE_FONT_SIZE,

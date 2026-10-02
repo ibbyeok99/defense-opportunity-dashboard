@@ -5,12 +5,11 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from service import data, queries
-from view.comparison import compare_notices
+from view.comparison import render_comparison
 from service.filters import Profile
 from service.eligibility import STATUS_OPTIONS
 from view import store
 from view.navigation import page_header
-from view.widgets import emphasized_table
 from view.notice_detail import show_detail
 from view.fmt import STATUS_COLORS
 
@@ -56,5 +55,5 @@ if len(selected) < 2:
     st.caption("2~4개를 선택하면 마감·기관·면허·지역 조건과 분류 과거 경쟁 지표를 비교합니다.")
 else:
     details = [queries.notice_detail(i, profile) for i in selected]
-    emphasized_table(compare_notices([d for d in details if d is not None]))
-    st.caption("과거 경쟁 수치는 개별 공고의 예측이 아닌 분류 전체 통계입니다. 서로 같은 분류이면 같은 값이 표시됩니다. 최종 참가 자격은 원문으로 확인하세요.")
+    render_comparison([d for d in details if d is not None], datetime.now(ZoneInfo("Asia/Seoul")).date(),
+                      on_detail=lambda value: st.session_state.update(favorite_detail=value))

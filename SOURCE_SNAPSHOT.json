@@ -7,259 +7,373 @@
   "files": [
     {
       "path": ".gitignore",
-      "sha256": "7046947719d7cf9a426afcfb4c7a62c4c2890141426fcb859b7f21d3c22e45ef"
+      "sha256": "7046947719d7cf9a426afcfb4c7a62c4c2890141426fcb859b7f21d3c22e45ef",
+      "git_lf_sha256": "7046947719d7cf9a426afcfb4c7a62c4c2890141426fcb859b7f21d3c22e45ef"
     },
     {
       "path": ".streamlit/config.toml",
-      "sha256": "21bdd35838d9b1d9274a81ab07004476e117f2990877c551be8597223d285087"
+      "sha256": "21bdd35838d9b1d9274a81ab07004476e117f2990877c551be8597223d285087",
+      "git_lf_sha256": "be789494fa20900342906501071b4bb3f02fa16c8d06cc09b6a57b469b9cfea5"
     },
     {
       "path": "dashboard/.streamlit/config.toml",
-      "sha256": "21bdd35838d9b1d9274a81ab07004476e117f2990877c551be8597223d285087"
+      "sha256": "21bdd35838d9b1d9274a81ab07004476e117f2990877c551be8597223d285087",
+      "git_lf_sha256": "be789494fa20900342906501071b4bb3f02fa16c8d06cc09b6a57b469b9cfea5"
     },
     {
       "path": "dashboard/.streamlit/secrets.community.example.toml",
-      "sha256": "c0b4119ff9e08cca39a65d6a4c09ae939afb45613a1591843e105426b68e6f20"
+      "sha256": "3ac2d71b7c096369bf1161aee5c176845b24ba9f13acf2763427b19cd5b1b42a",
+      "git_lf_sha256": "3ac2d71b7c096369bf1161aee5c176845b24ba9f13acf2763427b19cd5b1b42a"
+    },
+    {
+      "path": "dashboard/app_pages/category_criteria.py",
+      "sha256": "c27fe1f50e4599c99b0b38b47b31c7ffc2df649ba390c0623829cf6a296dfd17",
+      "git_lf_sha256": "c27fe1f50e4599c99b0b38b47b31c7ffc2df649ba390c0623829cf6a296dfd17"
     },
     {
       "path": "dashboard/app_pages/favorites.py",
-      "sha256": "a4e57d4477caacd92895ee1cd011671e187983606258d8324b207aa2fc0375e1"
-    },
-    {
-      "path": "dashboard/app_pages/institutions.py",
-      "sha256": "af0e5b13fa5aa8516ba65728112bb3dd5cc0b9b31bccaeff4b01974c11cf61c6"
-    },
-    {
-      "path": "dashboard/app_pages/item.py",
-      "sha256": "64c291828b30d9c41b9298525ac5091901d41dd79d8edb1e47f8bdc9c9c4e7a4"
-    },
-    {
-      "path": "dashboard/app_pages/notices.py",
-      "sha256": "c97a38b0b8543bef42b3405a1dcf0cea1754f4eeb3cbcd277296e4447ee5682e"
-    },
-    {
-      "path": "dashboard/app_pages/overview.py",
-      "sha256": "5f7c1eeff66a04b1d6eff5e1e5782e5c2699587f550ea8c801f953a375d50700"
-    },
-    {
-      "path": "dashboard/assets/icons/construction.png",
-      "sha256": "128670b05aeb5b7a4cc6233aab1aea0c54b82c690ee7bd4e0d0bc69a21137d30"
-    },
-    {
-      "path": "dashboard/assets/icons/contracts.png",
-      "sha256": "08da8c9ab2eb116d6eff35c82d6d8245608f6d66846482863f89341488685891"
-    },
-    {
-      "path": "dashboard/assets/icons/foreign.png",
-      "sha256": "b3bd2154658bb38ed336abdc69218d80044125dbfa8cb0117b528603541381ee"
-    },
-    {
-      "path": "dashboard/assets/icons/goods.png",
-      "sha256": "cb3abc6987ae16332b62f1cd3e5c9e935baed70f39d448d979207b14a2a755e3"
-    },
-    {
-      "path": "dashboard/assets/icons/market_contracts.png",
-      "sha256": "cd480a2f74fc3bf0df951d72d21e7e697f5e09518505827e92f1cf804062fe3f"
-    },
-    {
-      "path": "dashboard/assets/icons/market_notices.png",
-      "sha256": "1f2c68acc0bc050cc5cfea37058ce2aeadbc4fb7381db67e1c333adfaaa368a8"
-    },
-    {
-      "path": "dashboard/assets/icons/market_openings.png",
-      "sha256": "caee33a98db112a09adbea9dac31a5df69de010e5a4c17a83165f54bb4d31c8a"
-    },
-    {
-      "path": "dashboard/assets/icons/market_single_bid.png",
-      "sha256": "a556bcd146912cb7e4969e47a2e550d79638b9990a3384d92faacae72fabeb1f"
-    },
-    {
-      "path": "dashboard/assets/icons/notice_company_match.png",
-      "sha256": "71b4b5f3bb022445c8aced44cc5ddaa33adcaa92e3263c35d97bcbc05db81fe5"
-    },
-    {
-      "path": "dashboard/assets/icons/notice_deadline.png",
-      "sha256": "94c869fdb9d092191175634fef2f0d385344c61c64ef3bc451556ea20c962532"
-    },
-    {
-      "path": "dashboard/assets/icons/notice_found.png",
-      "sha256": "b6213eb36e5d84922565d883dcac1e68b89b61787ae5d5b7f97387e0ad839f1b"
-    },
-    {
-      "path": "dashboard/assets/icons/notice_review.png",
-      "sha256": "28db03bbe4e10a466628c7cca3bcb5a5f244ce503fcab1f3ff25dd6ddeac6eba"
-    },
-    {
-      "path": "dashboard/assets/icons/participants.png",
-      "sha256": "90aeba6a80a349e32afe30fb5febaa454fd4ade421262748d81659908a459343"
-    },
-    {
-      "path": "dashboard/assets/icons/services.png",
-      "sha256": "cd5568ffdc67f8644dead89451617b11326ae368bbeea82007516c929d45fa69"
-    },
-    {
-      "path": "dashboard/assets/icons/single_bid.png",
-      "sha256": "05f1ab2ef9392fa4e95c9669b612ff1ad0a430addb3c297d0727d21e08b588e1"
-    },
-    {
-      "path": "dashboard/assets/icons/supplier_share.png",
-      "sha256": "50fb8dd06413432dadbf7acc7a7d69a389aff9d1cfd87b121af6ac6095add851"
-    },
-    {
-      "path": "dashboard/requirements.txt",
-      "sha256": "22431e0c4eff517928ea849f9ad55e27ec7465380e8d23a1913da80ce9cadc00"
-    },
-    {
-      "path": "dashboard/service/__init__.py",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "path": "dashboard/service/api_transport.py",
-      "sha256": "5d7161c46a6361da17b130105ed03a2290e37eab8f7ef7e64b586d8bdf83eb3a"
-    },
-    {
-      "path": "dashboard/service/data.py",
-      "sha256": "3033b263a92e2bbe4c8c71c5b1c5b6f99c61ac24763ca4f9e8567d816beb1f9a"
-    },
-    {
-      "path": "dashboard/service/eligibility.py",
-      "sha256": "d092d490a0e4ff8e0241976e88a7f8546a450b0e3df00c30a764be0c872695bf"
-    },
-    {
-      "path": "dashboard/service/filters.py",
-      "sha256": "3a5e4650f0bce9f1e5588662cb309300f47c075a3f82d5da48bb4ff743409f06"
-    },
-    {
-      "path": "dashboard/service/institution_display.py",
-      "sha256": "5afdd2ebf2be5f253e2de5429191f1211cbe473cdf6b60d30b0c82522ab11d29"
-    },
-    {
-      "path": "dashboard/service/metrics.py",
-      "sha256": "542cd0914dd970f939d0d410f600ceef6f33998325fa57b15035f75cd02e36f7"
-    },
-    {
-      "path": "dashboard/service/notice_documents.py",
-      "sha256": "64c97482470d4a7d531a79c299c6ebc67fef3c2832134a7e3c7d2a3ba0860bee"
-    },
-    {
-      "path": "dashboard/service/notice_sort.py",
-      "sha256": "d15accb5c56337b4db409441720a7592b4ef71c92140c497ff25c1e00aab114f"
-    },
-    {
-      "path": "dashboard/service/queries.py",
-      "sha256": "b97e5296f0fae344e600de092966bc36617c5302505a4dd90b806c47b79f54e2"
-    },
-    {
-      "path": "dashboard/service/source.py",
-      "sha256": "d6d620340ca99c088b278dd160f1bd7ba6db07f80bce10d6a14e3a5a3d193276"
-    },
-    {
-      "path": "dashboard/streamlit_app.py",
-      "sha256": "85aee4feb668534712e66d2d09d94a3a24b0e393e76cf0ab24be1fdcfe9ea81b"
-    },
-    {
-      "path": "dashboard/view/__init__.py",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "path": "dashboard/view/assets.py",
-      "sha256": "1cbde2327a48ecd75adeaf5f72b8a8d5a5e2899f0ad26a63f65b497475f64d47"
-    },
-    {
-      "path": "dashboard/view/calendar.py",
-      "sha256": "10641f18095c22d632574a5c15807208fabf339f91feca1d6c53fd870024230d"
-    },
-    {
-      "path": "dashboard/view/charts.py",
-      "sha256": "8d1b6af7036725ee1c99743284a91ea12c82a8e7ce1e02122cd1275eabfe4c21"
-    },
-    {
-      "path": "dashboard/view/comparison.py",
-      "sha256": "991f1e1b0c48037bd8dbab4622a2eacf89637978f470bab5e4b40474ae0ef326"
-    },
-    {
-      "path": "dashboard/view/contract_patterns.py",
-      "sha256": "db8cbe5f8cc473817763ac98b5237d2c7ce75242ce4b7d63bce264d41de55e67"
-    },
-    {
-      "path": "dashboard/view/entry_summary.py",
-      "sha256": "372d0215bd987c8458e4545e08b7eea426064c98160ffc2c3e2e078023b7cc7c"
-    },
-    {
-      "path": "dashboard/view/fmt.py",
-      "sha256": "6382f2ad9e7ce33454e3163dd1aeccf3cac5f25154747080a9ea331e48e821fc"
-    },
-    {
-      "path": "dashboard/view/help.py",
-      "sha256": "62cf274f251753a341f761f98fce917e6b04acfc248a56b60c4e1f6376f77d73"
-    },
-    {
-      "path": "dashboard/view/institution_table.py",
-      "sha256": "3381b80692da907c9bbbe49a2514b3fde86256be6d7ac01a36e545c152e25e72"
-    },
-    {
-      "path": "dashboard/view/navigation.py",
-      "sha256": "d4add53b6a6044c3cf1c2ef6ecf48d5c486d07f25345eb9d3c2e5f13b2d8b9f8"
-    },
-    {
-      "path": "dashboard/view/notice_detail.py",
-      "sha256": "cd68553112d1fdf9db5cf70c89c1a233c9309f99ed448f964a3503ee56c0d421"
-    },
-    {
-      "path": "dashboard/view/notice_table.py",
-      "sha256": "16ab1c718a8e89c400e57e13e69f3759d10fa80f0ed9509ac28ca4303f805a7a"
-    },
-    {
-      "path": "dashboard/view/pdf.py",
-      "sha256": "7dd91f6cf273a261cf614e805bfd5d4280aa1dc347c4f29118f5ed4a5f2a760b"
-    },
-    {
-      "path": "dashboard/view/plotly_charts.py",
-      "sha256": "a2e941f19fff7889384ea90f27daa4b019af3b1f126f0580831dc1e67735ce18"
-    },
-    {
-      "path": "dashboard/view/search_summary.py",
-      "sha256": "28e3df52438dc2b41e5ad55949eed757ecd6a204b2d9c21985ad0432b27418b4"
-    },
-    {
-      "path": "dashboard/view/sidebar_interactions.py",
-      "sha256": "9ccbdbfae07d0339b76a522b4f68898152a3cd5fc59ffff9a3966e86bbd7c433"
-    },
-    {
-      "path": "dashboard/view/store.py",
-      "sha256": "2acfa4a4fc6792ae08806070afaeaa126f3b93345f74e1057b19e8cb77947b29"
-    },
-    {
-      "path": "dashboard/view/style.py",
-      "sha256": "a7b3cd952918d25f373285a6c5192f32a011d4acebb725a5d960c6d2015fed8e"
-    },
-    {
-      "path": "dashboard/view/table_interactions.py",
-      "sha256": "daef45787b0015aae8caf04d74be217eb7bd264fcaacb88dc786ce63df8f860a"
-    },
-    {
-      "path": "dashboard/view/widgets.py",
-      "sha256": "6a0e2e79671b614ae5393723b717104ca2fb1719a29db5496ed1d7f4a705e532"
-    },
-    {
-      "path": "packages.txt",
-      "sha256": "e9e63fcfc0da0d70b5fb443d25e9f20c7371da8e7e5dc84dd14a73fd0c0a0a99"
-    },
-    {
-      "path": "README.md",
-      "sha256": "b9e0b5ecb5806c1a8db3157f00f67f7e03d0f377d0030bb1ba995592996143ac"
+      "sha256": "66fb9afd4400335656d9ca7c7efadf8f6b4108d0d458f44520d0595375d6ebb2",
+      "git_lf_sha256": "66fb9afd4400335656d9ca7c7efadf8f6b4108d0d458f44520d0595375d6ebb2"
     },
     {
       "path": "dashboard/app_pages/home.py",
-      "sha256": "2ced94d80a5e5d2cf55418a1ea61ce07547d4ea398c94e12e885fea9cb7be399"
+      "sha256": "edf712c8cf147b601c3394fffa6961ba9a8895ffe928fb9d4f290213c1087b94",
+      "git_lf_sha256": "edf712c8cf147b601c3394fffa6961ba9a8895ffe928fb9d4f290213c1087b94"
     },
     {
-      "path": "dashboard/view/home.py",
-      "sha256": "10ef092d17b65acdb3a99e6bb432f09f60dce35b201e88e70b0e6ca297b89228"
+      "path": "dashboard/app_pages/institutions.py",
+      "sha256": "43443073dcc4d8b4058f68e3b0e845c529d028d86666974352a2a7510a90c0c1",
+      "git_lf_sha256": "43443073dcc4d8b4058f68e3b0e845c529d028d86666974352a2a7510a90c0c1"
+    },
+    {
+      "path": "dashboard/app_pages/item.py",
+      "sha256": "8d97785344e35c45702d2353fb647ce7c0f0d666e5b76f077df6f084229a94e7",
+      "git_lf_sha256": "9947240f665209e963938c78667d6b7a618551ea93208a3e688afbfcc5fb42a0"
+    },
+    {
+      "path": "dashboard/app_pages/notices.py",
+      "sha256": "d5dfdcace061e533d0e360a63f2610613e5544a51a2bea025732d001f76e2e67",
+      "git_lf_sha256": "ff92f0a09a9eca9e63defd7a7fd9430169661086aa2f37ce0afbceb26f050bfc"
+    },
+    {
+      "path": "dashboard/app_pages/overview.py",
+      "sha256": "d031b6962bccc16881b1d6e8dd68c3ae09b691372158edf2a97d37f43dfacc28",
+      "git_lf_sha256": "d031b6962bccc16881b1d6e8dd68c3ae09b691372158edf2a97d37f43dfacc28"
+    },
+    {
+      "path": "dashboard/assets/icons/background.png",
+      "sha256": "96f05fde7447485c3b2e8fbfd9c2fd44999bbf04306ffb8963c0910cfe07a18b",
+      "git_lf_sha256": "96f05fde7447485c3b2e8fbfd9c2fd44999bbf04306ffb8963c0910cfe07a18b"
+    },
+    {
+      "path": "dashboard/assets/icons/construction.png",
+      "sha256": "128670b05aeb5b7a4cc6233aab1aea0c54b82c690ee7bd4e0d0bc69a21137d30",
+      "git_lf_sha256": "128670b05aeb5b7a4cc6233aab1aea0c54b82c690ee7bd4e0d0bc69a21137d30"
+    },
+    {
+      "path": "dashboard/assets/icons/contracts.png",
+      "sha256": "08da8c9ab2eb116d6eff35c82d6d8245608f6d66846482863f89341488685891",
+      "git_lf_sha256": "08da8c9ab2eb116d6eff35c82d6d8245608f6d66846482863f89341488685891"
+    },
+    {
+      "path": "dashboard/assets/icons/foreign.png",
+      "sha256": "b3bd2154658bb38ed336abdc69218d80044125dbfa8cb0117b528603541381ee",
+      "git_lf_sha256": "b3bd2154658bb38ed336abdc69218d80044125dbfa8cb0117b528603541381ee"
+    },
+    {
+      "path": "dashboard/assets/icons/goods.png",
+      "sha256": "cb3abc6987ae16332b62f1cd3e5c9e935baed70f39d448d979207b14a2a755e3",
+      "git_lf_sha256": "cb3abc6987ae16332b62f1cd3e5c9e935baed70f39d448d979207b14a2a755e3"
+    },
+    {
+      "path": "dashboard/assets/icons/logo_black.png",
+      "sha256": "d155ec4b081bda0ab178896fd14cfc4389712f6a01fae56bce1d5b2955caf14f",
+      "git_lf_sha256": "d155ec4b081bda0ab178896fd14cfc4389712f6a01fae56bce1d5b2955caf14f"
+    },
+    {
+      "path": "dashboard/assets/icons/logo_white.png",
+      "sha256": "3189818e6b0900ad90a8f954c76ed2fc32c11e772cfb9c37808110c5f8d6b25f",
+      "git_lf_sha256": "3189818e6b0900ad90a8f954c76ed2fc32c11e772cfb9c37808110c5f8d6b25f"
+    },
+    {
+      "path": "dashboard/assets/icons/market_contracts.png",
+      "sha256": "cd480a2f74fc3bf0df951d72d21e7e697f5e09518505827e92f1cf804062fe3f",
+      "git_lf_sha256": "cd480a2f74fc3bf0df951d72d21e7e697f5e09518505827e92f1cf804062fe3f"
+    },
+    {
+      "path": "dashboard/assets/icons/market_notices.png",
+      "sha256": "1f2c68acc0bc050cc5cfea37058ce2aeadbc4fb7381db67e1c333adfaaa368a8",
+      "git_lf_sha256": "1f2c68acc0bc050cc5cfea37058ce2aeadbc4fb7381db67e1c333adfaaa368a8"
+    },
+    {
+      "path": "dashboard/assets/icons/market_openings.png",
+      "sha256": "caee33a98db112a09adbea9dac31a5df69de010e5a4c17a83165f54bb4d31c8a",
+      "git_lf_sha256": "caee33a98db112a09adbea9dac31a5df69de010e5a4c17a83165f54bb4d31c8a"
+    },
+    {
+      "path": "dashboard/assets/icons/market_single_bid.png",
+      "sha256": "a556bcd146912cb7e4969e47a2e550d79638b9990a3384d92faacae72fabeb1f",
+      "git_lf_sha256": "a556bcd146912cb7e4969e47a2e550d79638b9990a3384d92faacae72fabeb1f"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_company_match.png",
+      "sha256": "71b4b5f3bb022445c8aced44cc5ddaa33adcaa92e3263c35d97bcbc05db81fe5",
+      "git_lf_sha256": "71b4b5f3bb022445c8aced44cc5ddaa33adcaa92e3263c35d97bcbc05db81fe5"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_deadline.png",
+      "sha256": "94c869fdb9d092191175634fef2f0d385344c61c64ef3bc451556ea20c962532",
+      "git_lf_sha256": "94c869fdb9d092191175634fef2f0d385344c61c64ef3bc451556ea20c962532"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_found.png",
+      "sha256": "b6213eb36e5d84922565d883dcac1e68b89b61787ae5d5b7f97387e0ad839f1b",
+      "git_lf_sha256": "b6213eb36e5d84922565d883dcac1e68b89b61787ae5d5b7f97387e0ad839f1b"
+    },
+    {
+      "path": "dashboard/assets/icons/notice_review.png",
+      "sha256": "28db03bbe4e10a466628c7cca3bcb5a5f244ce503fcab1f3ff25dd6ddeac6eba",
+      "git_lf_sha256": "28db03bbe4e10a466628c7cca3bcb5a5f244ce503fcab1f3ff25dd6ddeac6eba"
+    },
+    {
+      "path": "dashboard/assets/icons/participants.png",
+      "sha256": "90aeba6a80a349e32afe30fb5febaa454fd4ade421262748d81659908a459343",
+      "git_lf_sha256": "90aeba6a80a349e32afe30fb5febaa454fd4ade421262748d81659908a459343"
+    },
+    {
+      "path": "dashboard/assets/icons/services.png",
+      "sha256": "cd5568ffdc67f8644dead89451617b11326ae368bbeea82007516c929d45fa69",
+      "git_lf_sha256": "cd5568ffdc67f8644dead89451617b11326ae368bbeea82007516c929d45fa69"
+    },
+    {
+      "path": "dashboard/assets/icons/single_bid.png",
+      "sha256": "05f1ab2ef9392fa4e95c9669b612ff1ad0a430addb3c297d0727d21e08b588e1",
+      "git_lf_sha256": "05f1ab2ef9392fa4e95c9669b612ff1ad0a430addb3c297d0727d21e08b588e1"
+    },
+    {
+      "path": "dashboard/assets/icons/supplier_share.png",
+      "sha256": "50fb8dd06413432dadbf7acc7a7d69a389aff9d1cfd87b121af6ac6095add851",
+      "git_lf_sha256": "50fb8dd06413432dadbf7acc7a7d69a389aff9d1cfd87b121af6ac6095add851"
+    },
+    {
+      "path": "dashboard/assets/reference/contract_agency_names.json",
+      "sha256": "4d9c83be15cfc60d5439d945597ed4cb32c284db0696aba5a1f050527533a49f",
+      "git_lf_sha256": "4d9c83be15cfc60d5439d945597ed4cb32c284db0696aba5a1f050527533a49f"
+    },
+    {
+      "path": "dashboard/assets/reference/product8_official_names.json",
+      "sha256": "7b9b210dd3f9329cc9817ae5b92fb0e6da96e9eabffbf5455370f1e88c15f4e6",
+      "git_lf_sha256": "7b9b210dd3f9329cc9817ae5b92fb0e6da96e9eabffbf5455370f1e88c15f4e6"
     },
     {
       "path": "dashboard/assets/videos/frontline_hero.mp4",
-      "sha256": "f33f875bf3f258d7125d215512e0cd0c24a215989c8a671fde79622dc73c854d"
+      "sha256": "f1a12e7a8653887e9caa9c99e7e482d3cb29d5adfb214acd9a554bae82ceb5e7",
+      "git_lf_sha256": "f1a12e7a8653887e9caa9c99e7e482d3cb29d5adfb214acd9a554bae82ceb5e7"
+    },
+    {
+      "path": "dashboard/requirements.txt",
+      "sha256": "2a4f0f70d9952b2992e3b10e4c5a62533cba9899c4a448431ea60e670419b1e2",
+      "git_lf_sha256": "2a4f0f70d9952b2992e3b10e4c5a62533cba9899c4a448431ea60e670419b1e2"
+    },
+    {
+      "path": "dashboard/service/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_lf_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "dashboard/service/api_transport.py",
+      "sha256": "f7ead91830f41e83aa41ab509bfe77fb9c766f2cd26a9150257139b7af16ae6a",
+      "git_lf_sha256": "f7ead91830f41e83aa41ab509bfe77fb9c766f2cd26a9150257139b7af16ae6a"
+    },
+    {
+      "path": "dashboard/service/category_quality.py",
+      "sha256": "34f6e1248f8fb38d325440642f3cbf8c0cb84c2a5a21383e2c85dc9622d70774",
+      "git_lf_sha256": "34f6e1248f8fb38d325440642f3cbf8c0cb84c2a5a21383e2c85dc9622d70774"
+    },
+    {
+      "path": "dashboard/service/data.py",
+      "sha256": "a92a8a2859ca1ab0d2da324ab2dbf06c65300da25b51926e9544449ac11298ec",
+      "git_lf_sha256": "a92a8a2859ca1ab0d2da324ab2dbf06c65300da25b51926e9544449ac11298ec"
+    },
+    {
+      "path": "dashboard/service/eligibility.py",
+      "sha256": "6bf2ba24db645f10cc4dc268085afe8d2333529fe6d8845ee9fd03c5481e32a9",
+      "git_lf_sha256": "6bf2ba24db645f10cc4dc268085afe8d2333529fe6d8845ee9fd03c5481e32a9"
+    },
+    {
+      "path": "dashboard/service/filters.py",
+      "sha256": "1e480396c6d077b786339a6352abc44deed53f929abb6f51688b41073134d981",
+      "git_lf_sha256": "1e480396c6d077b786339a6352abc44deed53f929abb6f51688b41073134d981"
+    },
+    {
+      "path": "dashboard/service/institution_display.py",
+      "sha256": "9c7faa0a9758a1512950625670dd6ceb065999210e5ca0abd9deb10b2737f2fe",
+      "git_lf_sha256": "9c7faa0a9758a1512950625670dd6ceb065999210e5ca0abd9deb10b2737f2fe"
+    },
+    {
+      "path": "dashboard/service/institution_names.py",
+      "sha256": "e1570d29bc199a3b407f6628410ee536f0e9ddd4a53cd20a5e2b5a39510b2c28",
+      "git_lf_sha256": "e1570d29bc199a3b407f6628410ee536f0e9ddd4a53cd20a5e2b5a39510b2c28"
+    },
+    {
+      "path": "dashboard/service/metrics.py",
+      "sha256": "166049209059b18a609c5f19576488d4fa16977637ac2c6e39a0a2024f8013db",
+      "git_lf_sha256": "166049209059b18a609c5f19576488d4fa16977637ac2c6e39a0a2024f8013db"
+    },
+    {
+      "path": "dashboard/service/notice_documents.py",
+      "sha256": "3dff18262a9c5f2f9e5b4c946645053b4981522227aac35cebafa4ef338a3d48",
+      "git_lf_sha256": "3dff18262a9c5f2f9e5b4c946645053b4981522227aac35cebafa4ef338a3d48"
+    },
+    {
+      "path": "dashboard/service/notice_sort.py",
+      "sha256": "c5f1122b9ff0690058ae028be7777bb6cd37abba2890f67123d4ecd7a995e7a6",
+      "git_lf_sha256": "c5f1122b9ff0690058ae028be7777bb6cd37abba2890f67123d4ecd7a995e7a6"
+    },
+    {
+      "path": "dashboard/service/queries.py",
+      "sha256": "b138a88a737ec3d30052c3c778968b4730517a6b134bdd16c9a7e6eda1fe1e81",
+      "git_lf_sha256": "b138a88a737ec3d30052c3c778968b4730517a6b134bdd16c9a7e6eda1fe1e81"
+    },
+    {
+      "path": "dashboard/service/source.py",
+      "sha256": "13ee60c84dd88e83e98112de6278f3be0a1379c5459077d3acc23608c728657c",
+      "git_lf_sha256": "13ee60c84dd88e83e98112de6278f3be0a1379c5459077d3acc23608c728657c"
+    },
+    {
+      "path": "dashboard/streamlit_app.py",
+      "sha256": "9bfd635dca9dd55f3870b339de2678ea010589173382f2cf41e445b1e51c19cb",
+      "git_lf_sha256": "e71c633cb857a838fb13f6447a91c696e985c652a77a7eb8735109268352243b"
+    },
+    {
+      "path": "dashboard/view/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_lf_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "dashboard/view/assets.py",
+      "sha256": "ccbbd4b19faec2112d1348138b377c48d373f8f4c5789cc5a61651a205d48acd",
+      "git_lf_sha256": "ccbbd4b19faec2112d1348138b377c48d373f8f4c5789cc5a61651a205d48acd"
+    },
+    {
+      "path": "dashboard/view/calendar.py",
+      "sha256": "f29032363feeac2e03aa18fb21944166886468d27f5bf0597d3a14f93d488e84",
+      "git_lf_sha256": "f29032363feeac2e03aa18fb21944166886468d27f5bf0597d3a14f93d488e84"
+    },
+    {
+      "path": "dashboard/view/charts.py",
+      "sha256": "e48c7563ea7290d212899dec26a1d67732a9ff05c59a770c41672b7dddd2046a",
+      "git_lf_sha256": "e48c7563ea7290d212899dec26a1d67732a9ff05c59a770c41672b7dddd2046a"
+    },
+    {
+      "path": "dashboard/view/comparison.py",
+      "sha256": "ef162f35df904885b58c62ff114fcc37c8b415586a14209e61521a59515b6500",
+      "git_lf_sha256": "ef162f35df904885b58c62ff114fcc37c8b415586a14209e61521a59515b6500"
+    },
+    {
+      "path": "dashboard/view/contract_patterns.py",
+      "sha256": "147900c7ad8762f7767c721813e8dd909b531370c7b407122bc962f65dbccca1",
+      "git_lf_sha256": "147900c7ad8762f7767c721813e8dd909b531370c7b407122bc962f65dbccca1"
+    },
+    {
+      "path": "dashboard/view/detail_design.py",
+      "sha256": "6f6eef7b4ae9559ce409817adbb61caabfcd1a301404cfbea905ff8fcf5c17e3",
+      "git_lf_sha256": "6f6eef7b4ae9559ce409817adbb61caabfcd1a301404cfbea905ff8fcf5c17e3"
+    },
+    {
+      "path": "dashboard/view/entry_summary.py",
+      "sha256": "ddbf3fc6beed269763c01c12114228e74c9a11c02123401b4642b9a3ca0eb8d5",
+      "git_lf_sha256": "ddbf3fc6beed269763c01c12114228e74c9a11c02123401b4642b9a3ca0eb8d5"
+    },
+    {
+      "path": "dashboard/view/fmt.py",
+      "sha256": "944f6d60c1a29e47807ee839b0058f656736c9b55a36537cc8910fcfc29607b3",
+      "git_lf_sha256": "944f6d60c1a29e47807ee839b0058f656736c9b55a36537cc8910fcfc29607b3"
+    },
+    {
+      "path": "dashboard/view/help.py",
+      "sha256": "fe241ddec72742d7a05b0a94989e2d787abc410c3bbb2d6ad8cdc3972cb73379",
+      "git_lf_sha256": "fe241ddec72742d7a05b0a94989e2d787abc410c3bbb2d6ad8cdc3972cb73379"
+    },
+    {
+      "path": "dashboard/view/home.py",
+      "sha256": "4c5eff25b041aac4254e7584b52cb0c0238bd625d864801b4719eb65bb77f1da",
+      "git_lf_sha256": "4c5eff25b041aac4254e7584b52cb0c0238bd625d864801b4719eb65bb77f1da"
+    },
+    {
+      "path": "dashboard/view/institution_table.py",
+      "sha256": "c31c1ae781f5caf1b3c654fff4814fd074520b556eda512cec4b4b321c04017a",
+      "git_lf_sha256": "c31c1ae781f5caf1b3c654fff4814fd074520b556eda512cec4b4b321c04017a"
+    },
+    {
+      "path": "dashboard/view/navigation.py",
+      "sha256": "e6dfdfd7b1df9f83708837cc5044f420e8d1801ba485e38175bb055c0b2e8fef",
+      "git_lf_sha256": "e6dfdfd7b1df9f83708837cc5044f420e8d1801ba485e38175bb055c0b2e8fef"
+    },
+    {
+      "path": "dashboard/view/notice_detail.py",
+      "sha256": "78617c2043e677f86ca5df15bbdddea75d76a4f48132b0db8cc0f0987ed0cc8a",
+      "git_lf_sha256": "78617c2043e677f86ca5df15bbdddea75d76a4f48132b0db8cc0f0987ed0cc8a"
+    },
+    {
+      "path": "dashboard/view/notice_table.py",
+      "sha256": "66eab3b3645d5b75a7fd64dfa02ace825c8808d399c3444a32a7410eac53f37d",
+      "git_lf_sha256": "66eab3b3645d5b75a7fd64dfa02ace825c8808d399c3444a32a7410eac53f37d"
+    },
+    {
+      "path": "dashboard/view/pdf.py",
+      "sha256": "918439484e8c4baa499e5cb77c3091ab93d0278bc598106ce55cc31873bf297d",
+      "git_lf_sha256": "918439484e8c4baa499e5cb77c3091ab93d0278bc598106ce55cc31873bf297d"
+    },
+    {
+      "path": "dashboard/view/plotly_charts.py",
+      "sha256": "38026ed018b40e1462dffe43654a81eba71461b7d532c74a963ba1353617fc36",
+      "git_lf_sha256": "38026ed018b40e1462dffe43654a81eba71461b7d532c74a963ba1353617fc36"
+    },
+    {
+      "path": "dashboard/view/reference_table.py",
+      "sha256": "426f04fb5f23a7dfb1195b1bfafde71e59bb92016ff5de0b474ca38a6ebc2bb8",
+      "git_lf_sha256": "426f04fb5f23a7dfb1195b1bfafde71e59bb92016ff5de0b474ca38a6ebc2bb8"
+    },
+    {
+      "path": "dashboard/view/search_summary.py",
+      "sha256": "810ddee57353e541c36dc3bc7222b3fc3e19b33a0a085722f3df0349ba01ac6b",
+      "git_lf_sha256": "810ddee57353e541c36dc3bc7222b3fc3e19b33a0a085722f3df0349ba01ac6b"
+    },
+    {
+      "path": "dashboard/view/sidebar_interactions.py",
+      "sha256": "eb17b984a12d1bb0de86fabca0355339622ca5f91aa2af5d9baebf69b7490a98",
+      "git_lf_sha256": "eb17b984a12d1bb0de86fabca0355339622ca5f91aa2af5d9baebf69b7490a98"
+    },
+    {
+      "path": "dashboard/view/store.py",
+      "sha256": "2e06458680404c1803818de9ef12470365f03aa59eee3ac9297d9d6c319f8247",
+      "git_lf_sha256": "2e06458680404c1803818de9ef12470365f03aa59eee3ac9297d9d6c319f8247"
+    },
+    {
+      "path": "dashboard/view/style.py",
+      "sha256": "bd6d6ad4990f697e5563f85cb6c3745f8dfdb08191124156c68c477eceff042b",
+      "git_lf_sha256": "bd6d6ad4990f697e5563f85cb6c3745f8dfdb08191124156c68c477eceff042b"
+    },
+    {
+      "path": "dashboard/view/table_interactions.py",
+      "sha256": "8e7353203ad00a5ece8e674b0457357895d2fe7af27d2064b218f514e03ef6c2",
+      "git_lf_sha256": "8e7353203ad00a5ece8e674b0457357895d2fe7af27d2064b218f514e03ef6c2"
+    },
+    {
+      "path": "dashboard/view/widgets.py",
+      "sha256": "51af775ebd51ef3e00091d5ffe0fe261626481605a8bb41fb844255985206220",
+      "git_lf_sha256": "fa27c0271bd8e9e7db4ee6c03d8db4bdbf231e981af14862323311342e2ea196"
+    },
+    {
+      "path": "packages.txt",
+      "sha256": "e9e63fcfc0da0d70b5fb443d25e9f20c7371da8e7e5dc84dd14a73fd0c0a0a99",
+      "git_lf_sha256": "003ab46fe0b7c4ada768a3aa6aca8cd6f337c84c7835729a9cfa0707e301b755"
+    },
+    {
+      "path": "README.md",
+      "sha256": "099f5c3d9b72610cb32f98e2e689d53748bdb1efc1106a651dac76ccf0ddb8d9",
+      "git_lf_sha256": "099f5c3d9b72610cb32f98e2e689d53748bdb1efc1106a651dac76ccf0ddb8d9"
     }
   ],
   "updates": [
@@ -268,5 +382,9 @@
       "date": "2026-10-02",
       "scope": "Home page only: local working-tree streamlit_app.py, app_pages/home.py, view/home.py and H.264 video. Notice detail unchanged."
     }
-  ]
+  ],
+  "update_date": "2026-10-02",
+  "update_basis": "승인된 현재 로컬 고객 화면. 관리자 진입 제외 전용 엔트리포인트. 원본 데이터/비밀값 제외.",
+  "source_working_tree_base": "e52ddc0b373e1127528226afbd382c44e93e8af5",
+  "previous_deployment_commit": "490337a55af4f7c6d96e7fd008435c170a5cb080"
 }

@@ -12,8 +12,8 @@ th,td {padding:8px 12px;box-sizing:border-box;text-align:left;vertical-align:mid
 th {font-weight:700;background:var(--st-dataframe-header-background-color);}
 td {background:var(--st-secondary-background-color);}
 th:nth-child(1) {width:112px;} th:nth-child(2) {width:220px;}
-th:nth-child(3) {width:100px;} th:nth-child(4) {width:130px;}
-th:nth-child(5) {width:215px;} th:nth-child(6) {width:343px;}
+th:nth-child(3) {width:100px;} th:nth-child(4) {width:110px;}
+th:nth-child(5) {width:190px;} th:nth-child(6) {width:388px;}
 tbody tr:last-child td {border-bottom:0;}
 tbody tr:hover td {background:color-mix(in srgb,var(--st-primary-color) 4%,var(--st-secondary-background-color));}
 button {font:inherit;font-weight:700;color:inherit;border:0;background:transparent;padding:0;text-align:left;cursor:pointer;}

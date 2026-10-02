@@ -135,28 +135,37 @@ def _short_label(row) -> str:
 
 
 def pick_category(key_prefix: str, cats: pd.DataFrame, all_types: list[str], *,
-                  event_counts: dict[str, int] | None = None) -> pd.Series | None:
+                  event_counts: dict[str, int] | None = None,
+                  default_item: str | None = None) -> pd.Series | None:
     """사이드바의 유형·분류 선택. 선택은 화면 사이에서 공유한다(session_state 'sel_item').
     cats: service.data.categories() 표. 선택칸은 짧게, 대표 공고·개찰 수는 아래 설명 줄에(글자 잘림 방지)."""
     types = [t for t in all_types if t in set(cats["procurement_type"])]
-    current = st.session_state.get("sel_item")
+    current = st.session_state.get("sel_item") or default_item
     known = set(cats["item_code"])
     cur_type = cats.loc[cats["item_code"] == current, "procurement_type"].iloc[0] if current in known else types[0]
 
     with filter_area():
-        ptype = st.pills("조달 유형", types, default=cur_type, required=True, key=f"{key_prefix}_type")
+        type_key, item_key = f"{key_prefix}_type", f"{key_prefix}_item"
+        if st.session_state.get(type_key) not in types:
+            st.session_state[type_key] = cur_type
+        ptype = st.pills("조달 유형", types, required=True, key=type_key)
         sub = cats[cats["procurement_type"] == ptype]
         codes = sub["item_code"].tolist()
         labels = dict(zip(sub["item_code"], sub.apply(_short_label, axis=1)))
-        index = codes.index(current) if current in codes else 0
-        code = st.selectbox("분야·분류 (이름·번호로 검색)", codes, index=index, format_func=labels.get,
-                            key=f"{key_prefix}_item")
+        # 명시된 기본 분류를 우선하되, 현재 유형에 없으면 기존 대표 분류 기준을 사용한다.
+        default_code = default_item if default_item in codes else sub.sort_values(
+            ["events", "item_code"], ascending=[False, True], kind="stable").iloc[0]["item_code"]
+        if st.session_state.get(item_key) not in codes:
+            st.session_state[item_key] = current if current in codes else default_code
+        code = st.selectbox("분야·분류 (이름·번호로 검색)", codes, format_func=labels.get, key=item_key)
         if code is not None:
             row = sub[sub["item_code"] == code].iloc[0]
             example = f"대표 공고: {row['example']} · " if row["example"] and str(row["category_value"]).isdigit() else ""
             count = int(row["events"]) if event_counts is None else event_counts.get(code, 0)
             basis = "" if event_counts is None else "현재 조건 · "
             st.caption(f":gray[{example}{basis}개찰 {count:,}건]")
+        if st.session_state.get("_filter_slot") is not None:
+            st.page_link("app_pages/category_criteria.py", label="분류명 매칭 기준", icon=":material/rule:")
     if code is None:
         return None
     st.session_state.sel_item = code

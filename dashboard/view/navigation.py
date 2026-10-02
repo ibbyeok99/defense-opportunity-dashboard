@@ -3,6 +3,7 @@
 import streamlit as st
 
 APP_TITLE = "국방조달 기회 찾기"
+APP_SUBTITLE = "데이터로 보는 국방 조달 시장"
 PAGE_LABELS = {
     "notices": "국방 입찰공고 찾기",
     "item": "분야별 입찰 분석",
@@ -21,16 +22,24 @@ def app_header(pages, current_page):
     """기본 라우터를 유지하고 제목 아래 웹페이지형 링크 메뉴를 배치한다."""
     with st.container(key="app_sticky_header"):
         with st.container(horizontal=True, vertical_alignment="top", key="page_heading_app"):
-            with st.container(width="stretch"):
+            with st.container(width="stretch", gap="xxsmall", key="app_title_block"):
                 st.title(APP_TITLE, anchor=False)
+                with st.container(key="app_subtitle"):
+                    st.markdown(APP_SUBTITLE)
             st.session_state._export_slot = st.container(
                 horizontal=True, horizontal_alignment="right", width="content", key="exports_app", gap="xsmall")
-        with st.container(horizontal=True, wrap=True, gap="small", key="page_menu"):
-            for page in pages:
-                selected = page.url_path == current_page.url_path
-                with st.container(width="content", key=f"nav_{'active' if selected else 'link'}_{page.url_path or 'notices'}"):
-                    st.page_link(page, label=f":blue[**{page.title}**]" if selected else page.title,
-                                 icon=page.icon, width="content")
+        public_pages = [page for page in pages if page.url_path not in {"admin", "quality"}]
+        management_pages = [page for page in pages if page.url_path in {"admin", "quality"}]
+        with st.container(horizontal=True, wrap=True, gap="small", horizontal_alignment="distribute", key="page_menu"):
+            for group, key in ((public_pages, "page_menu_public"), (management_pages, "page_menu_management")):
+                if not group:
+                    continue
+                with st.container(horizontal=True, wrap=True, gap="small", width="content", key=key):
+                    for page in group:
+                        selected = page.url_path == current_page.url_path
+                        with st.container(width="content", key=f"nav_{'active' if selected else 'link'}_{page.url_path or 'notices'}"):
+                            st.page_link(page, label=f":blue[**{page.title}**]" if selected else page.title,
+                                         icon=page.icon, width="content")
 
 
 def page_header(name: str):
@@ -42,3 +51,4 @@ def page_header(name: str):
                 st.caption(PAGE_DESCRIPTIONS[name])
             if name == "notices":
                 st.page_link("app_pages/institutions.py", label="국방 기관·선정 기준", icon=":material/policy:", width="content")
+                st.page_link("app_pages/category_criteria.py", label="분류명 매칭 기준", icon=":material/rule:", width="content")

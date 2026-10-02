@@ -15,6 +15,8 @@ from service.source import (NOTICE_TTL, STATS_TTL, SOURCE, read_metadata, read_p
                             read_defense_institutions, PUBLISHED_TABLES)
 from service.source import read_table as _read
 from service.source import read_automatic_institutions
+from service.source import read_product_name_reference
+from service.category_quality import apply_official_names, catalog_audit
 from service.institution_display import roles_label, reason_label
 
 TYPES = ["물품", "용역", "공사", "외자"]
@@ -120,7 +122,7 @@ def category_examples() -> dict[str, str]:
 
 @st.cache_data(ttl=STATS_TTL)
 def categories() -> pd.DataFrame:
-    """분류 선택 목록: 유형·분류별 누적 개찰 수가 많은 순. `display`는 화면 표시용 이름."""
+    """분류 선택 목록: 현재 공식 product8 품명 적용(2026-10-02 v2), 가나다·코드순. 집계·키 보존."""
     m = category_market()
     if "classification_type" in m.columns and "category_value" in m.columns:
         agg = (m.groupby(["procurement_type", "item_code", "classification_type", "category_value"], dropna=False)
@@ -143,6 +145,7 @@ def categories() -> pd.DataFrame:
     is_code = agg["category_value"].str.fullmatch(r"\d+").fillna(False)
     agg["example"] = agg["item_code"].map(examples).fillna("").str.slice(0, 24)
     kind = agg["classification_type"].fillna("").str.replace(r"\(.*\)", "", regex=True)
+    kind = kind.replace({"product8": "물품분류번호"})
     fallback = agg["category_value"].where(~is_code, kind + " " + agg["category_value"])
     if "item_label" in agg.columns:
         label_status = agg.get("item_name_status", pd.Series("", index=agg.index)).fillna("")
@@ -151,9 +154,30 @@ def categories() -> pd.DataFrame:
         agg["display"] = official.where(confirmed & official.ne(""), fallback)
     else:
         agg["display"] = fallback
+    agg = apply_official_names(agg, read_product_name_reference())
     use_example = is_code & agg["example"].ne("") & agg["display"].eq(fallback)
     agg["label"] = agg["display"].where(~use_example, agg["display"] + "  (공고 예: " + agg["example"] + ")")
-    return agg.sort_values("events", ascending=False)
+    return agg.sort_values(["procurement_type", "display", "item_code"], kind="stable")
+
+
+@st.cache_data(ttl=STATS_TTL)
+def category_name_audit():
+    catalog = _read("category_catalog.csv")
+    market = category_market()
+    market_keys = market[["procurement_type", "item_code"]].drop_duplicates()
+    if "procurement_type" not in catalog:
+        # 과거 오프라인 카탈로그에는 유형 열이 없다. 같은 내부 키의 분석 유형만 연결한다.
+        catalog = catalog.merge(market_keys, on="item_code", how="left", validate="one_to_one")
+    reference = read_product_name_reference()
+    out = catalog_audit(catalog, reference)
+    out["화면 표시"] = out["분류키"].map(categories().set_index("item_code")["display"]).fillna("현재 분석 목록에 없음")
+    out.attrs["checked_at"] = reference["checked_at"]
+    out.attrs["source"] = reference["source"]
+    out.attrs["display_policy"] = "현재 공식 product8 품명 · 확정/충돌 모두 적용"
+    out.attrs["duplicate_keys"] = int(catalog.duplicated(["procurement_type", "item_code"]).sum())
+    out.attrs["missing_catalog_keys"] = int((~market_keys.item_code.isin(catalog.item_code)).sum())
+    out.attrs["catalog_only_count"] = int((~catalog.item_code.isin(market.item_code)).sum())
+    return out
 
 
 def category_display(item_code: str, fallback: str = "") -> str:

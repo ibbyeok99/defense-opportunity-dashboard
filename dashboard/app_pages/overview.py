@@ -105,14 +105,16 @@ if len(ev_year):
 
 tab_size, tab_comp, tab_major, tab_contract = st.tabs(["시장 규모", "경쟁 수준", "주요 분야·기관", "계약 특성"])
 with tab_size:
-    left, right = st.columns([2, 1])
+    left, right = st.columns([1.8, 1])
     with left, card("연도별 공고 수는 어떻게 변했나요?", "유형별 국방 공고 수(건)"):
-        show(line_figure(notice_year, "연도", "notice_count", y_title="공고 수 (건)",
-                         series="procurement_type", integer=True), key="ov_notices_chart")
+        with st.container(key="ov_size_plot_left"):
+            show(line_figure(notice_year, "연도", "notice_count", y_title="공고 수 (건)",
+                             series="procurement_type", integer=True), key="ov_notices_chart")
     share = res["share"]
     with right, card("어느 유형 공고가 많나요?", f"{years[0]}~{years[1]}년 유형별 공고 비중"):
         if len(share):
-            show_donut(share)
+            with st.container(key="ov_size_plot_right"):
+                show_donut(share)
     krw = res["contract_type_year"].copy()
     krw["연도"] = krw["year"].astype(str)
     krw = krw[krw["procurement_type"] != "외자"].assign(amount_eok=lambda d: d["contract_amount"] / 1e8)
@@ -171,7 +173,9 @@ with tab_major:
                         height=max(420, 34 * max(len(top_ag), len(top_cat)) + 100)), key="ov_categories_chart")
 
 with tab_contract:
-    show_contract_patterns(res["contract_type_year"], res["contract_supported"], data.institutions())
+    from service.institution_names import contract_institution_names
+    show_contract_patterns(res["contract_type_year"], res["contract_supported"], data.institutions(),
+                           years=years, types=types, names=contract_institution_names(data.defense_institutions()))
 
 conditions = [f"{years[0]}~{years[1]}년", f"유형 {', '.join(types)}"]
 if agencies:

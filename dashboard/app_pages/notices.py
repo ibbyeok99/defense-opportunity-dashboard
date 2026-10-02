@@ -220,7 +220,7 @@ with results_panel:
         st.caption("요건 미확인은 제한 없음이 아닙니다. 확인된 내용도 최종 참가 자격은 공고 원문으로 확인하세요.")
     st.caption("☆를 눌러 공고를 즐겨찾기에 저장하세요. 최대 10개를 저장하고, 즐겨찾기에서 최대 4개를 비교할 수 있습니다.")
 if f.empty and st.session_state.nt_scope != store.SCOPE_ALL:
-    with results_panel:
+    with results_panel, st.container(key="notice_empty_state"):
         st.info("선택한 조건에 해당하는 공고가 없습니다.", icon=":material/filter_alt_off:")
         if my_region or my_licenses:
             st.caption(company_empty_hint(True))
@@ -228,7 +228,7 @@ elif st.session_state.nt_scope == store.SCOPE_COMPANY:
     with results_panel:
         st.caption("입력한 소재지·면허 기준으로 조건을 충족한 공고입니다. 최종 참가 자격은 공고 원문에서 확인하세요.")
 elif f.empty:
-    with results_panel:
+    with results_panel, st.container(key="notice_empty_state"):
         st.info("선택한 조건에 해당하는 공고가 없습니다.", icon=":material/filter_alt_off:")
 if st.session_state.get("nt_view", "표") == "표":
     with results_panel:

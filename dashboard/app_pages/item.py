@@ -15,6 +15,7 @@ from view.plotly_charts import bar_figure, histogram_figure, line_figure, show
 from view.fmt import CONTRACT_AMOUNT_MESSAGES, num, pct, year_delta, region_display
 from view.pdf import Report
 from view.navigation import page_header
+from view.reference_table import reference_table
 from view.assets import procurement_icon_html
 from view.help import help_label
 from view.search_summary import search_summary
@@ -29,7 +30,14 @@ with st.spinner("품목 자료를 불러오는 중입니다…"):
     _ = (metrics.events(), data.categories(), data.notices(), data.suppliers(), data.competition_levels())
 
 # ---- 사이드바: [필터 초기화] → 조달 유형·품목 → 기간 → 상세 조건(기관·금액, 접힘) ----
-IT_DEFAULTS = {"it_years": YEAR_RANGE, "it_agency_role": "수요기관", "it_agency_수요기관": [], "it_agency_공고기관": [],
+item_categories = data.categories()
+default_category = item_categories.loc[item_categories["procurement_type"].eq("물품")
+                                      & item_categories["category_value"].eq("23261507")]
+default_item = default_category.iloc[0]["item_code"] if len(default_category) == 1 else None
+if default_item is None:
+    st.warning("기본 분류 ‘3차원프린터 (23261507)’를 현재 자료에서 유일하게 확인할 수 없습니다. 현재 목록의 대표 분류를 표시합니다.")
+IT_DEFAULTS = {"it_type": "물품", "it_item": default_item, "sel_item": default_item,
+               "it_years": YEAR_RANGE, "it_agency_role": "수요기관", "it_agency_수요기관": [], "it_agency_공고기관": [],
                "it_amount": []}
 with filter_area():
     sidebar_toolbar("it", IT_DEFAULTS)
@@ -38,7 +46,7 @@ sidebar_counts = queries.item_event_counts(ItemFilter(
     tuple(st.session_state.get("it_years", YEAR_RANGE)), sidebar_role,
     tuple(st.session_state.get(f"it_agency_{sidebar_role}") or ()),
     tuple(st.session_state.get("it_amount") or ())))
-cat = pick_category("it", data.categories(), data.TYPES, event_counts=sidebar_counts)
+cat = pick_category("it", item_categories, data.TYPES, event_counts=sidebar_counts, default_item=default_item)
 if cat is None:
     st.stop()
 code, ptype = cat["item_code"], cat["procurement_type"]
@@ -74,28 +82,33 @@ def _go_open_notices():
 
 
 with st.container(key="item_context", gap="xsmall"):
-    context_left, context_right = st.columns([3, 2], gap="small", vertical_alignment="center")
-    with context_left:
-        type_icon = procurement_icon_html(ptype)
-        with st.container(horizontal=True, gap="xsmall", vertical_alignment="center",
-                          width="content", wrap=False, key="item_category_heading"):
-            if type_icon:
-                with st.container(width=40, key="item_procurement_icon"):
-                    st.html(type_icon, width=40)
-                st.subheader(cat['display'], anchor=False)
-            else:
-                st.subheader(f"[{ptype}] {cat['display']}", anchor=False)
-        with st.container(horizontal=True, gap="xsmall", vertical_alignment="center", key="item_context_meta"):
-            st.caption(f"선택 기간 추이: {years[0]}~{years[1]}년 · 개찰 {len(ev):,}건", width="content")
-            if level and level != "표본 적음":
-                with st.popover(f"경쟁 {level} · {int(res['level_year'])}년 분류 전체 기준", icon=":material/info:", type="tertiary", key="it_competition_criteria"):
-                    st.caption("선택한 분석 기간·기관·낙찰금액 조건으로 다시 평가한 등급이 아닙니다. 분류 전체의 최근 연도 기준입니다.")
-                    st.caption("경쟁 수준: 같은 조달 유형의 분류별 최근 연도 참가업체 중앙값 순위를 낮음·보통·높음으로 3등분한 상대 비교입니다. 동률은 원본 분류 순서로 나누며, 절대 진입 난이도가 아닙니다.")
-            if filtered:
-                st.markdown(":blue-badge[선택 조건 적용]")
-    with context_right, st.container(horizontal_alignment="right", key="item_context_action"):
-        go_notices = st.button(f"진행 중 공고 {open_n}건 보기", icon=":material/campaign:", type="primary",
-                              disabled=open_n == 0, on_click=_go_open_notices, key="it_go_notices", width="content")
+    st.space(8)
+    type_icon = procurement_icon_html(ptype)
+    with st.container(horizontal=True, gap="xsmall", vertical_alignment="center",
+                      width="content", wrap=False, key="item_category_heading"):
+        if type_icon:
+            with st.container(width=36, key="item_procurement_icon"):
+                st.html(type_icon, width=36)
+            st.subheader(cat['display'], anchor=False)
+        else:
+            st.subheader(f"[{ptype}] {cat['display']}", anchor=False)
+    # 두 기준 문구와 행동을 같은 행에 둔다. 좁은 화면에서는 자연스럽게 줄바꿈한다.
+    # 빈 개찰 결과에서도 공고 이동은 유지하고, 기준 문구는 계산 후 슬롯에 채운다.
+    with st.container(horizontal=True, horizontal_alignment="distribute", vertical_alignment="bottom",
+                      key="item_context_row", gap="small"):
+        with st.container(key="item_context_text", gap="xsmall"):
+            with st.container(horizontal=True, gap="xsmall", vertical_alignment="center", key="item_context_meta"):
+                st.caption(f"선택 기간 추이: {years[0]}~{years[1]}년 · 개찰 {len(ev):,}건", width="content")
+                if level and level != "표본 적음":
+                    with st.popover(f"경쟁 {level} · {int(res['level_year'])}년 분류 전체 기준", icon=":material/info:", type="tertiary", key="it_competition_criteria"):
+                        st.caption("선택한 분석 기간·기관·낙찰금액 조건으로 다시 평가한 등급이 아닙니다. 분류 전체의 최근 연도 기준입니다.")
+                        st.caption("경쟁 수준: 같은 조달 유형의 분류별 최근 연도 참가업체 중앙값 순위를 낮음·보통·높음으로 3등분한 상대 비교입니다. 동률은 원본 분류 순서로 나누며, 절대 진입 난이도가 아닙니다.")
+                if filtered:
+                    st.markdown(":blue-badge[선택 조건 적용]")
+            kpi_basis_slot = st.empty()
+        with st.container(horizontal_alignment="right", width="content", key="item_context_action"):
+            go_notices = st.button(f"진행 중 공고 {open_n}건 보기", icon=":material/campaign:", type="primary",
+                                  disabled=open_n == 0, on_click=_go_open_notices, key="it_go_notices", width="content")
 
 if go_notices:
     st.switch_page("app_pages/notices.py")
@@ -111,7 +124,7 @@ kcur, kprev, kyear = res["kpi_current"], res["kpi_previous"], res["kpi_year"]
 no_previous_year = kyear == 2020
 comparison_note = "전년 비교 자료 없음 (데이터는 2020년부터 제공)" if no_previous_year else f"{kyear - 1}년 전체 대비"
 kpi_basis = f"상단 지표: {kyear}년 요약{' (부분연도)' if res['kpi_partial'] else ''} · {comparison_note}"
-st.caption(kpi_basis)
+kpi_basis_slot.caption(kpi_basis)
 kpis = [("참가업체 수 (중앙값)", f"{num(kcur['median_bidders'], 1)}곳"),
         ("단독입찰 비율", pct(kcur["single_bid_rate"])),
         ("상위 3개 업체 점유", pct(kcur["top3"])),
@@ -224,10 +237,10 @@ with tab_sup:
     st.markdown(f"#### 누가 낙찰받았나요? ({years[0]}~{years[1]}년 합계, 낙찰 건수 상위 15)")
     st.caption("선택한 분류·기간 전체 기준입니다. 기관·낙찰금액 필터는 이 업체 표에 적용되지 않습니다.")
     if len(top_sup):
-        st.dataframe(top_sup, hide_index=True, row_height=44, height="content", column_config={
-            "supplier_name": st.column_config.TextColumn("업체", width="large"),
-            "award_count": st.column_config.NumberColumn("낙찰 (건)", format="%d"),
-            "count_share": st.column_config.ProgressColumn("낙찰 비중", format="percent", min_value=0, max_value=1)})
+        reference_table(top_sup.rename(columns={"supplier_name": "업체", "award_count": "낙찰 (건)", "count_share": "낙찰 비중"}),
+                        key="it_supplier_table", label="낙찰 업체", compact=True, width_scale=1.4,
+                        formats={"낙찰 (건)": "integer", "낙찰 비중": "percent"},
+                        widths={"낙찰 (건)": 110, "낙찰 비중": 312}, progress_columns=("낙찰 비중",))
     else:
         st.markdown("표시할 항목이 없습니다.")
 

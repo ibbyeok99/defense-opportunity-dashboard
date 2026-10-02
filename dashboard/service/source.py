@@ -53,6 +53,12 @@ MYSQL_TABLES = {
 PUBLISHED_TABLES = tuple(MYSQL_TABLES.values())
 
 
+def read_product_name_reference() -> dict:
+    """공식 API 읽기 조회로 검증한 공개 품명 사본. 화면 실행 시 API 키를 쓰지 않는다."""
+    path = Path(__file__).resolve().parents[1] / "assets" / "reference" / "product8_official_names.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _query_mysql(query: str) -> pd.DataFrame:
     """Streamlit이 관리하는 SQLAlchemy 연결로 읽기 전용 SELECT를 실행한다."""
     conn = st.connection("mysql", type="sql", max_entries=1)
@@ -193,6 +199,19 @@ def read_pending_institutions(cols: list[str]) -> pd.DataFrame:
     return pd.read_excel(path, dtype=str)
 
 
+def read_contract_institution_names() -> dict[str, str]:
+    """게시 계약기관의 이름만 보완하는 코드 명부. 기관 판정에는 사용하지 않는다."""
+    path = REPO_ROOT / "dashboard/assets/reference/contract_agency_names.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema_version") != 1 or not isinstance(payload.get("records"), dict):
+        raise ValueError("계약기관 이름 명부의 형식을 확인해야 합니다.")
+    records = payload["records"]
+    if any(not isinstance(code, str) or not code.strip() or not isinstance(name, str) or not name.strip()
+           for code, name in records.items()):
+        raise ValueError("계약기관 이름 명부에 빈 코드·이름이 있습니다.")
+    return records
+
+
 def read_defense_institutions() -> pd.DataFrame:
     """공개 안내용 프로젝트 판정 대장. 로컬 사본만 읽으며 S3·대장은 수정하지 않는다."""
     if SOURCE == "api":
@@ -207,6 +226,20 @@ def read_local_defense_institutions() -> pd.DataFrame:
     df.attrs["source"] = path.name
     df.attrs["modified_at"] = datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
     return df
+
+
+def read_historical_institution_codes() -> frozenset[str]:
+    """과거 검토 완료 기관의 코드 집합. 현재 운영 대장은 기준에 섞지 않는다."""
+    codes = set()
+    for relative in ("TRY02/result/defense_institution_whitelist_try02_all.csv",
+                     "TRY01/result/defense_institution_whitelist_final.csv"):
+        frame = pd.read_csv(ALLOWLIST_DIR / relative, dtype=str, usecols=["institution_code"])
+        values = frame["institution_code"].dropna().str.strip()
+        values = values[values.ne("")]
+        if values.empty:
+            raise ValueError("과거 기관 검토 기준 목록이 비어 있습니다.")
+        codes.update(values)
+    return frozenset(codes)
 
 
 def read_automatic_institutions() -> pd.DataFrame:
