@@ -47,7 +47,7 @@ button:hover,button:focus-visible {border-color:var(--st-primary-color);color:va
 .notice-title {color:var(--st-blue-text-color);font-size:16.5px;font-weight:600;line-height:1.55;}
 .status-pill,.type-pill,.deadline-pill {display:inline-block;border-radius:999px;padding:3.3px 9px;font-size:14.3px;font-weight:600;line-height:1.5;white-space:nowrap;}
 .type-pill {color:var(--st-orange-text-color);background:var(--st-orange-background-color);}
-.deadline-pill {color:var(--st-gray-text-color);background:var(--st-gray-background-color);}
+.deadline-pill {color:var(--st-blue-text-color);background:var(--st-blue-background-color);}
 .deadline-pill.urgent {color:var(--st-red-text-color);background:var(--st-red-background-color);}
 .status-pill {background:var(--st-gray-background-color);color:var(--st-gray-text-color);}
 """

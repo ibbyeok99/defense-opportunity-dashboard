@@ -1,7 +1,7 @@
 """게시 지표에서 확인되는 계약 규모·빈도만 제공한다. 계약방법·업체 선호는 추론하지 않는다."""
 import pandas as pd
 import streamlit as st
-from view.charts import card
+from view.charts import card, empty_chart
 from view.plotly_charts import bar_figure, show
 from view.reference_table import reference_table
 from view.fmt import num
@@ -60,6 +60,7 @@ def show_contract_patterns(type_year: pd.DataFrame, supported: bool, institution
             st.info("상세 필터를 해제해야 계약일 기준 유형 비교를 볼 수 있습니다.")
         elif type_year.empty:
             st.info("선택 기간의 계약 집계가 없습니다.")
+            empty_chart(key="empty_contract_type_count")
         else:
             table = type_year.groupby("procurement_type", as_index=False).agg(
                 contract_count=("contract_count", lambda s: s.sum(min_count=1)),
@@ -81,9 +82,9 @@ def show_contract_patterns(type_year: pd.DataFrame, supported: bool, institution
                                 fit_container=True,
                                 widths={"유형": 64, "계약 수 (건)": 110, "평균 계약금액 (억원)": 148, "계약금액 (억원)": 150},
                                 numeric_columns=("계약 수 (건)", "계약금액 (억원)", "평균 계약금액 (억원)"))
-            st.caption("평균 금액은 총금액÷계약 수입니다. 외자 금액은 통화가 달라 원화 비교에서 제외합니다. 단가·총액 계약 구분이 없어 평균 규모 해석에 주의하세요.")
+            st.caption("평균 계약금액은 총금액을 계약 수로 나눈 값입니다. 외자는 통화가 달라 원화 비교에서 제외합니다. 이 집계는 단가계약과 총액계약을 구분하지 않으므로, 이 평균만으로 건별 구매 규모를 판단할 수 없습니다.")
     period = f"{years[0]}~{years[1]}년" if years is not None else "게시 전체 기간"
-    scope = f"기관별 집계표 기준: {period} · 선택 조달 유형의 연도별 계약 건수를 기관코드별로 합산합니다. 분류·수요기관·지역·금액·낙찰/유찰 필터는 적용되지 않습니다. 위 분류별 그래프와 집계 범위가 달라 합계가 같지 않을 수 있습니다."
+    scope = f"기관별 집계표 기준: {period} · 선택 조달 유형의 연도별 계약 건수를 기관코드별로 합산합니다. 분류·수요기관·지역·금액·낙찰/유찰 필터는 적용되지 않습니다. 기관별 표에는 분류가 연결되지 않은 계약도 포함되므로, 분류가 있는 계약만 집계한 위 그래프와 합계가 다를 수 있습니다."
     with card("계약기관별 계약 건수", scope):
         required = {"year"} if years is not None else set()
         if types is not None:
@@ -108,4 +109,5 @@ def show_contract_patterns(type_year: pd.DataFrame, supported: bool, institution
                         formats={"계약 수 (건)": "integer"},
                         height=400, numeric_columns=("계약 수 (건)",))
         unknown = inst.agency_name.str.startswith("기관명 미제공").sum() + inst.agency_name.eq("기관명·코드 미제공").sum()
-        st.caption(f"기관명은 기관 명부의 코드가 정확히 일치할 때만 보정합니다. 이름 미확인 {unknown}곳. 기관명 표시는 국방 기관 포함 판정과 별개입니다. 수요기관을 계약기관으로 대체하지 않으며, 계약금액·계약방법 성향을 뜻하지 않습니다.")
+        st.caption(f"기관명이 확인되지 않은 곳은 {unknown}곳이며, 기관코드로 표시합니다. 기관명은 정확히 일치하는 코드로만 연결합니다.")
+        st.caption("계약을 체결한 기관의 계약 건수입니다. 수요기관과 다를 수 있으며, 기관 이름만으로 국방 조달 대상 여부나 계약 성향을 판단하지 않습니다.")

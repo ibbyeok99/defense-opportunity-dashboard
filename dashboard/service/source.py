@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import os
+import hashlib
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -53,6 +55,214 @@ MYSQL_TABLES = {
 PUBLISHED_TABLES = tuple(MYSQL_TABLES.values())
 
 
+def requirement_evidence_directory() -> Path:
+    return REPO_ROOT / "data" / "dashboard_requirement_evidence"
+
+
+@st.cache_data(ttl=60, max_entries=2, show_spinner=False)
+def read_requirement_evidence(*, include_expired=False) -> list[dict]:
+    """공개 근거 보완 사본만 읽는다. 잘못된 파일은 요건으로 사용하지 않는다."""
+    from service.requirement_overlay import fresh, prepare
+    records = {}
+    directory = requirement_evidence_directory()
+    if not directory.exists():
+        return []
+    for path in directory.glob("*.json"):
+        try:
+            if path.stat().st_size > 1024 * 1024:
+                continue
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if not include_expired and not fresh(value):
+                continue
+            value = prepare(value, value["procurement_type"])
+            key = (value["procurement_type"], value["notice_number"], value["notice_order"])
+            if key not in records or value["checked_at"] > records[key]["checked_at"]:
+                records[key] = value
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+    return list(records.values())
+
+
+@st.cache_data(ttl=60, max_entries=1, show_spinner=False)
+def read_api_requirement_evidence() -> list[dict]:
+    """목록에서 재사용할 공식 API 값만 읽는다. 문서 추출/구조화는 실행하지 않는다."""
+    from service.requirement_overlay import fresh, prepare
+    records = {}
+    directory = requirement_evidence_directory()
+    if not directory.exists():
+        return []
+    for path in directory.glob('*.json'):
+        try:
+            if path.stat().st_size > 1024 * 1024:
+                continue
+            raw = json.loads(path.read_text(encoding='utf-8'))
+            if not isinstance(raw, dict) or raw.get('error') or not fresh(raw):
+                continue
+            if any(not isinstance(raw.get('api_' + kind + '_rows', []), list) or
+                   any(not isinstance(row, dict) for row in raw.get('api_' + kind + '_rows', []))
+                   for kind in ('license', 'region')):
+                continue
+            key = (raw['procurement_type'], raw['notice_number'], raw['notice_order'])
+            value = {field: raw[field] for field in ('schema','notice_number','notice_order','checked_at',
+                'api_license_rows','api_region_rows','notice_flags','notice_facts') if field in raw}
+            value.update(evidence=[], sources=[], warnings=[], api_only=True)
+            if key not in records or raw['checked_at'] > records[key]['checked_at']:
+                records[key] = prepare(value, raw['procurement_type'])
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+    return list(records.values())
+
+
+def save_requirement_evidence(result: dict, procurement_type: str) -> dict:
+    """원본 DB가 아닌 별도 공개 근거 저장소. 검사 시각별 사본을 원자적으로 남긴다."""
+    from service.requirement_overlay import prepare
+    value = prepare(result, procurement_type)
+    allowed = {"schema", "notice_number", "notice_order", "checked_at", "evidence", "sources",
+               "warnings", "api_license_rows", "api_region_rows", "procurement_type", "overlay_schema", "resolved",
+               "notice_flags", "notice_facts", "structured", "coverage", "attachment_inventory_complete", "source_fingerprint", "detail_fingerprint"}
+    value = {k: v for k, v in value.items() if k in allowed}
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if len(payload.encode("utf-8")) > 1024 * 1024 or "serviceKey" in payload:
+        raise ValueError("근거 저장 크기·비밀값 검사를 통과하지 못했습니다")
+    directory = requirement_evidence_directory()
+    directory.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    target = directory / (digest + ".json")
+    if not target.exists():
+        temporary = directory / (uuid.uuid4().hex + ".tmp")
+        try:
+            temporary.write_text(payload, encoding="utf-8")
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    read_requirement_evidence.clear()
+    read_api_requirement_evidence.clear()
+    return value
+
+
+def read_requirement_failures():
+    """자격 보완값과 분리한 실패 이력. 원문 오류·비밀값은 저장하지 않는다."""
+    from service.requirement_overlay import identity
+    directory = requirement_evidence_directory() / 'failures'
+    records = []
+    for path in directory.glob('*.json'):
+        try:
+            value = json.loads(path.read_text(encoding='utf-8'))
+            identity(value)
+            if value.get('stage') in {'응답 시간 초과', '조회 실패'}:
+                records.append(value)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return records
+
+
+
+
+def requirement_queue_path():
+    return requirement_evidence_directory() / 'queue' / 'state.json'
+
+
+def read_requirement_queue():
+    from service.requirement_queue import empty_state, validate_state
+    path = requirement_queue_path()
+    if not path.exists():
+        return empty_state()
+    if path.stat().st_size > 20 * 1024 * 1024:
+        raise ValueError('요건 체크포인트 크기 한도 초과. 초기화/전체 재조회 금지')
+    try:
+        return validate_state(json.loads(path.read_text(encoding='utf-8')))
+    except (OSError, ValueError, TypeError):
+        raise ValueError('요건 체크포인트 읽기 실패. 파일을 보존하고 원인을 확인하세요.') from None
+
+
+def save_requirement_queue(value):
+    from service.requirement_queue import validate_state
+    validate_state(value)
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if len(payload.encode()) > 20 * 1024 * 1024 or 'serviceKey' in payload:
+        raise ValueError('요건 체크포인트 크기/비밀값 검사 실패')
+    path = requirement_queue_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.parent / (uuid.uuid4().hex + '.tmp')
+    try:
+        temporary.write_text(payload, encoding='utf-8')
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def read_requirement_watch():
+    from service.requirement_watch import validate_watch
+    path = requirement_queue_path().with_name('watch.json')
+    if not path.exists():
+        return None
+    if path.stat().st_size > 20 * 1024 * 1024:
+        raise ValueError('신규 감지 상태 크기 한도 초과. 자동 초기화 금지')
+    return validate_watch(json.loads(path.read_text(encoding='utf-8')))
+
+
+def save_requirement_watch(value):
+    from service.requirement_watch import validate_watch
+    payload = json.dumps(validate_watch(value), ensure_ascii=False, sort_keys=True)
+    if len(payload.encode('utf-8')) > 20 * 1024 * 1024 or 'serviceKey' in payload:
+        raise ValueError('신규 감지 상태 크기/비밀값 검사 실패')
+    path = requirement_queue_path().with_name('watch.json')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.parent / (uuid.uuid4().hex + '.tmp')
+    try:
+        temporary.write_text(payload, encoding='utf-8')
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def requirement_queue_lock():
+    """같은 호스트에서 단일 worker만 허용. 다른 프로세스의 잠금을 강제 해제하지 않는다."""
+    from contextlib import contextmanager
+
+    @contextmanager
+    def locked():
+        path = requirement_queue_path().with_suffix('.lock')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open('a+b') as handle:
+            if path.stat().st_size == 0:
+                handle.write(b'0')
+                handle.flush()
+            handle.seek(0)
+            try:
+                if os.name == 'nt':
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                raise ValueError('다른 요건 worker가 실행 중입니다. 동시에 조회하지 않습니다.') from None
+            try:
+                yield
+            finally:
+                handle.seek(0)
+                if os.name == 'nt':
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    return locked()
+
+
+def save_requirement_failure(number, order, procurement_type, *, timeout=False):
+    from datetime import timezone
+    from service.requirement_overlay import identity
+    value = dict(notice_number=number, notice_order=order, procurement_type=procurement_type,
+                 checked_at=datetime.now(timezone.utc).isoformat(),
+                 stage='응답 시간 초과' if timeout else '조회 실패')
+    identity(value)
+    directory = requirement_evidence_directory() / 'failures'
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / (uuid.uuid4().hex + '.json')
+    target.write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
+    return value
+
+
 def read_product_name_reference() -> dict:
     """공식 API 읽기 조회로 검증한 공개 품명 사본. 화면 실행 시 API 키를 쓰지 않는다."""
     path = Path(__file__).resolve().parents[1] / "assets" / "reference" / "product8_official_names.json"
@@ -61,17 +271,22 @@ def read_product_name_reference() -> dict:
 
 def _query_mysql(query: str) -> pd.DataFrame:
     """Streamlit이 관리하는 SQLAlchemy 연결로 읽기 전용 SELECT를 실행한다."""
+    from sqlalchemy import text
     conn = st.connection("mysql", type="sql", max_entries=1)
-    return conn.query(query, ttl=0, show_spinner=False)
+    # Streamlit 1.64.0의 conn.query는 connect()의 반환 연결을 닫지 않는다.
+    # 반복 점검에서 pool(5+10)이 고갈됨을 확인했다. 상위 표 캐시는 그대로 유지한다.
+    with conn.connect() as connection:
+        return pd.read_sql(text(query), connection)
 
 
 def _mysql_query_for(name: str) -> str:
     """실제 스키마의 열 차이를 대시보드 데이터 계약에 맞춘 SQL."""
     if name == "mart_notice_eligibility.csv":
+        from service.notice_projection import notice_select_columns
         # 요건 요약 뷰는 복합 조인 때문에 4개 공고 키에서 같은 행이 두 번 나온다.
         # 사전 확인에서 중복 행의 면허·지역·URL 값은 모두 같았으므로 키별로 1행만 만든다.
-        return """
-            SELECT n.*,
+        return f"""
+            SELECT {notice_select_columns()},
                    n.bidClseDt AS bid_close_date,
                    c.classification_type,
                    c.category_value,
@@ -161,23 +376,38 @@ def read_metadata() -> dict:
 
 def mysql_metadata(query) -> dict:
     """로컬과 API가 동일한 게시 버전 검사·메타데이터 계약을 사용한다."""
-    versions = []
+    versions, states = [], {}
     for table in PUBLISHED_TABLES:
-        row = query(
-            f"SELECT run_id, data_version, metric_version, data_as_of "
-            f"FROM `{table}` LIMIT 1"
-        )
+        try:
+            row = query(
+                f"SELECT run_id, data_version, metric_version, data_as_of "
+                f"FROM `{table}` LIMIT 1"
+            )
+        except Exception:
+            versions.append((table, None))
+            states[table] = '조회 실패'
+            continue
         if row.empty:
             versions.append((table, None))
+            states[table] = '게시 행 없음'
         else:
             values = row.iloc[0].tolist()
-            versions.append((table, tuple(str(v) for v in values)))
+            if len(values) != 4 or any(pd.isna(v) or str(v).strip() in {'','None','nan','NaT'} for v in values):
+                versions.append((table, None))
+                states[table] = '버전 값 미확인'
+            else:
+                versions.append((table, tuple(str(v) for v in values)))
+                states[table] = '버전 확인'
 
     populated = [version for _, version in versions if version is not None]
-    version_consistent = len(populated) == len(PUBLISHED_TABLES) and len(set(populated)) == 1
+    version_consistent = (False if len(set(populated)) > 1 else
+                          True if len(populated) == len(PUBLISHED_TABLES) else None)
     version = populated[0] if populated else (None, None, None, None)
-    basis = query("SELECT DISTINCT contract_population_basis FROM mart_category_market LIMIT 1")
-    contract_basis = basis.iloc[0, 0] if not basis.empty else ""
+    try:
+        basis = query("SELECT DISTINCT contract_population_basis FROM mart_category_market LIMIT 1")
+        contract_basis = basis.iloc[0, 0] if not basis.empty else ""
+    except Exception:
+        contract_basis = ''
     return {
         "run_id": version[0],
         "snapshot_id": version[0],
@@ -186,6 +416,9 @@ def mysql_metadata(query) -> dict:
         "data_as_of": version[3],
         "contract_population_basis": contract_basis,
         "version_consistent": version_consistent,
+        "version_status": '일치' if version_consistent is True else '불일치' if version_consistent is False else '미확인',
+        "table_version_states": states,
+        "table_versions": {table: value for table,value in versions},
         "required_tables_present": len(populated) == len(PUBLISHED_TABLES),
     }
 
@@ -254,3 +487,22 @@ def read_automatic_institutions() -> pd.DataFrame:
     result = pd.concat(frames, ignore_index=True)
     result = result[result.is_defense.isin(["Y", "N"])]
     return result.drop_duplicates(["institution_code", "is_defense", "classification_reason"], keep="last").reset_index(drop=True)
+
+
+def requirement_service_key() -> str:
+    """공식 공고 API 읽기 전용 설정. 비밀값을 반환 결과·기록에 저장하지 않는다."""
+    value = os.environ.get("G2B_SERVICE_KEY") or os.environ.get("G2B_CNTRCT_SERVICE_KEY")
+    if value:
+        return value.strip()
+    try:
+        value = st.secrets.get("g2b", {}).get("service_key", "")
+    except FileNotFoundError:
+        value = ""
+    if value:
+        return str(value).strip()
+    env = REPO_ROOT / ".env"
+    if env.is_file():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith("G2B_CNTRCT_SERVICE_KEY="):
+                return line.split("=", 1)[1].split(" #", 1)[0].strip().strip('"\'')
+    return ""

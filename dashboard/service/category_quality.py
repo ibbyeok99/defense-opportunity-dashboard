@@ -8,7 +8,7 @@ import pandas as pd
 
 def official_record(row, reference):
     code = str(row.get("category_value", ""))
-    if row.get("procurement_type") != "물품" or row.get("classification_type") != "product8" or not re.fullmatch(r"\d{8}", code):
+    if row.get("procurement_type") not in {"물품", "외자"} or row.get("classification_type") != "product8" or not re.fullmatch(r"\d{8}", code):
         return None
     record = reference.get("records", {}).get(code)
     if not isinstance(record, list) or len(record) != 3 or record[1] != "Y" or not isinstance(record[0], str) or not record[0].strip():
@@ -41,7 +41,7 @@ def catalog_audit(catalog, reference):
             name = re.sub(r"\s*\(" + re.escape(code) + r"\)\s*$", "", str(label)) if pd.notna(label) else ""
         name = str(name).strip()
         record = official_record(row, reference)
-        if row.get("procurement_type") != "물품" or kind != "product8":
+        if row.get("procurement_type") not in {"물품", "외자"} or kind != "product8":
             status = "다른 분류체계 · 공식 대조 대상 아님"
         elif not re.fullmatch(r"\d{8}", code):
             status = "코드 형식 확인 필요"

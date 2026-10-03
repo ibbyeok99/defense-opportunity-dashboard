@@ -1,1 +1,4 @@
 fonts-nanum
+tesseract-ocr
+tesseract-ocr-kor
+tesseract-ocr-eng

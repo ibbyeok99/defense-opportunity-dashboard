@@ -22,6 +22,7 @@ from view.charts import kpi_tiles
 from view.fmt import (STATUS_COLORS, num, pct, region_display, notice_status_label, company_empty_hint,
                       notice_requirement_summary, compact_filter_values, notice_identifier, dday_text)
 from view.notice_detail import show_detail
+from service.notice_requirements import fetch_evidence
 from view.pdf import Report
 from view.navigation import page_header
 from view.widgets import (agency_filter, company_profile, detail_expander, filter_area, pdf_button, safe_name,
@@ -58,6 +59,28 @@ def _clear_item_filter():
     st.session_state.nt_item = None
 
 
+def _save_search():
+    # 폼 제출 시 이름과 현재 조건을 함께 받는다. 입력 중인 값으로 버튼을 비활성화하지 않는다.
+    name = str(st.session_state.get("nt_preset_name") or "").strip()
+    if not name:
+        st.session_state.nt_preset_feedback = ("warning", "검색 조건 이름을 입력하세요.")
+        return
+    store.save_preset(name)
+    st.session_state.nt_preset_feedback = ("success", f"'{name}' 저장했습니다.")
+
+
+def _delete_search():
+    victim = st.session_state.get("nt_preset_del")
+    if victim not in {p["name"] for p in store.presets()}:
+        st.session_state.nt_preset_feedback = ("warning", "지울 검색 조건을 선택하세요.")
+        return
+    store.delete_preset(victim)
+    if st.session_state.get("nt_preset") == victim:
+        st.session_state.nt_preset = None
+    st.session_state.nt_preset_del = None
+    st.session_state.nt_preset_feedback = ("success", f"'{victim}' 삭제했습니다.")
+
+
 def _saved_searches():
     """저장한 검색: 불러오기·현재 조건 저장·지우기를 팝오버 하나에."""
     saved = store.presets()
@@ -66,15 +89,17 @@ def _saved_searches():
             st.selectbox("불러오기", [p["name"] for p in saved], index=None, placeholder="선택",
                          key="nt_preset", on_change=lambda: store.apply_preset(st.session_state.nt_preset))
         st.markdown(":gray[검색 조건과 내 회사 조건을 함께 저장합니다.]")
-        name = st.text_input("이름", placeholder="예: 대전 전기공사", key="nt_preset_name")
-        if st.button("현재 조건 저장", type="primary", disabled=not name.strip(), key="nt_preset_save"):
-            store.save_preset(name)
-            st.toast(f"'{name.strip()}' 저장했습니다. 다음에 '저장한 검색'에서 불러오세요.")
+        with st.form("nt_preset_save_form", border=False):
+            st.text_input("이름", placeholder="예: 대전 전기공사", key="nt_preset_name")
+            st.form_submit_button("현재 조건 저장", type="primary", key="nt_preset_save", on_click=_save_search)
         if saved:
-            victim = st.selectbox("지우기", [p["name"] for p in saved], index=None, key="nt_preset_del")
-            if st.button("선택한 검색 지우기", disabled=victim is None, key="nt_preset_delete"):
-                store.delete_preset(victim)
-                st.rerun()
+            st.selectbox("지우기", [p["name"] for p in saved], index=None, key="nt_preset_del")
+            can_delete = st.session_state.get("nt_preset_del") in {p["name"] for p in saved}
+            st.button("선택한 검색 지우기", key="nt_preset_delete", on_click=_delete_search,
+                      disabled=not can_delete, type="primary" if can_delete else "secondary")
+        feedback = st.session_state.get("nt_preset_feedback")
+        if feedback:
+            getattr(st, feedback[0])(feedback[1])
 
 
 with filter_area():
@@ -82,11 +107,10 @@ with filter_area():
     if st.session_state.get("nt_item"):  # 품목 분석의 '진행 중 공고 보기'에서 넘어온 분류 필터
         st.button(f"분류: {data.category_display(st.session_state.nt_item)}  ✕", on_click=_clear_item_filter,
                   icon=":material/filter_alt:", help="누르면 분류 필터를 없앱니다.", key="nt_item_clear")
-    help_label("공고명·분류 번호 검색", "공고명 또는 품목 분류 번호(8자리)로 찾습니다.", key="help_nt_kw")
-    st.text_input("공고명·분류 번호 검색", placeholder="예: 전투복, 72154090", key="nt_kw", persist_state="session",
+    help_label("공고명·분류·요건 검색", "공고명·분류 번호와 확인된 면허·지역 조건으로 검색합니다. 공고문·첨부 내용은 상세 페이지 또는 즐겨찾기에서 확인할 수 있습니다.", key="help_nt_kw")
+    st.text_input("공고명·분류·요건 검색", placeholder="예: 전투복, 72154090, 충청북도", key="nt_kw", persist_state="session",
                   label_visibility="collapsed")
     st.pills("조달 유형", data.TYPES, selection_mode="multi", key="nt_types", persist_state="session")
-    st.caption("유형 1개 이상 선택 · 모두 해제 시 검색 안 함")
     active_detail = int(bool(st.session_state.get(f"nt_agency_{st.session_state.nt_agency_role}")))
     with detail_expander("nt", active_detail):
         dates = period_calendar("공고 기간 (공고일 기준)", key="nt_dates", today=today,
@@ -105,9 +129,16 @@ nt_status, nt_deadline = ("마감 전" if open_only else "전체"), "전체"
 
 # ---- 사용자가 조달 유형을 모두 해제했을 때만 안내(팝업 없이) ----
 if not st.session_state.nt_types:
+    with export_slot:
+        st.download_button("CSV", b"", "국방공고_검색결과.csv", mime="text/csv",
+                           icon=":material/download:", disabled=True, type="tertiary",
+                           help="조달 유형을 선택하면 다운로드할 수 있습니다.")
+        st.download_button("PDF", b"", "국방공고_검색결과.pdf", mime="application/pdf",
+                           icon=":material/picture_as_pdf:", disabled=True, type="tertiary",
+                           help="조달 유형을 선택하면 다운로드할 수 있습니다.")
     with st.container(border=True, key="card_need_types"):
         st.markdown("#### 조달 유형을 1개 이상 골라 주세요")
-        st.markdown("왼쪽 **조달 유형**에서 물품·용역·공사·외자 중 고르면 공고가 나옵니다.")
+        st.markdown("왼쪽 **조달 유형**에서 물품·용역·공사·외자 중 선택하면 공고를 검색할 수 있습니다.")
     st.stop()
 
 # ---- 거르기(service) ----
@@ -117,7 +148,7 @@ f = queries.find_notices(NoticeFilter(
     types=tuple(st.session_state.nt_types), item=st.session_state.get("nt_item"), keyword=kw,
     status=nt_status, deadline=nt_deadline, agency_role=agency_role,
     agencies=tuple(agencies), date_from=dates[0] if dates else None,
-    date_to=dates[-1] if dates else None), profile, now)
+    date_to=dates[-1] if dates else None), profile, now, stored_only=True)
 summary = queries.notice_summary(f)          # 요약 숫자는 참여 판단 전체 기준
 found_n = len(f)
 if st.session_state.nt_scope != store.SCOPE_ALL:   # 목록만 '참여 가능'으로 좁힌다(사용자 지시 2026-09-29)
@@ -186,7 +217,9 @@ table = pd.DataFrame({
 if show_requirements:
     table["면허·지역 요건"] = f.apply(
         lambda r: notice_requirement_summary(r.get("license_state"), r.get("license_values"),
-                                             r.get("region_state"), r.get("region_values")).replace(" | ", "\n"), axis=1)
+                                             r.get("region_state"), r.get("region_values"),
+                                             license_review=r.get("license_review_status", "미조회"),
+                                             region_review=r.get("region_review_status", "미조회")).replace(" | ", "\n"), axis=1)
     table = table[["마감", "공고명", "수요기관", "유형", "면허·지역 요건", "참여", "상세"]]
 
 # 표 안 스크롤을 없애려고 20건씩 페이지로 나눈다(표 높이 = 내용 높이).
@@ -214,11 +247,10 @@ with results_panel, st.container(horizontal=True, vertical_alignment="center"):
     with st.container(horizontal=True, horizontal_alignment="right", width="stretch", key="nt_view_controls"):
         st.segmented_control("보기", ["표", "카드"], required=True, key="nt_view", persist_state="session",
                              default="표", label_visibility="collapsed",
-                             help="휴대폰처럼 좁은 화면에서는 '카드'가 보기 편합니다.")
+                             help="휴대폰처럼 좁은 화면에서는 ‘카드’ 보기를 권장합니다.")
 with results_panel:
     if show_requirements:
-        st.caption("요건 미확인은 제한 없음이 아닙니다. 확인된 내용도 최종 참가 자격은 공고 원문으로 확인하세요.")
-    st.caption("☆를 눌러 공고를 즐겨찾기에 저장하세요. 최대 10개를 저장하고, 즐겨찾기에서 최대 4개를 비교할 수 있습니다.")
+        st.caption("확인된 면허·지역 조건을 표시합니다. ‘상세 확인’은 아직 확인할 조건이 있다는 뜻입니다. 상세 페이지를 열면 원문·첨부 확인을 진행합니다.")
 if f.empty and st.session_state.nt_scope != store.SCOPE_ALL:
     with results_panel, st.container(key="notice_empty_state"):
         st.info("선택한 조건에 해당하는 공고가 없습니다.", icon=":material/filter_alt_off:")
@@ -226,7 +258,7 @@ if f.empty and st.session_state.nt_scope != store.SCOPE_ALL:
             st.caption(company_empty_hint(True))
 elif st.session_state.nt_scope == store.SCOPE_COMPANY:
     with results_panel:
-        st.caption("입력한 소재지·면허 기준으로 조건을 충족한 공고입니다. 최종 참가 자격은 공고 원문에서 확인하세요.")
+        st.caption("입력한 소재지·면허 조건을 충족하는 공고입니다. 다른 참가자격은 상세 페이지에서 확인해야 합니다.")
 elif f.empty:
     with results_panel, st.container(key="notice_empty_state"):
         st.info("선택한 조건에 해당하는 공고가 없습니다.", icon=":material/filter_alt_off:")
@@ -249,7 +281,9 @@ else:  # 카드형 목록(좁은 화면용, 디자인 검토 2026-09-28) — 공
                         f"{r['bid_close_date']:%Y-%m-%d %H:%M}" if pd.notna(r["bid_close_date"]) else r["demand_agency_name"])
             if show_requirements:
                 st.caption(notice_requirement_summary(r.get("license_state"), r.get("license_values"),
-                                                      r.get("region_state"), r.get("region_values")).replace(" | ", "  \n"))
+                                                      r.get("region_state"), r.get("region_values"),
+                                                      license_review=r.get("license_review_status", "미조회"),
+                                                      region_review=r.get("region_review_status", "미조회")).replace(" | ", "  \n"))
             with st.container(horizontal=True, gap="small", wrap=True, key=f"nt_card_actions_{r['notice_id']}"):
                 if st.button("상세보기", icon=":material/open_in_new:", key=f"nt_card_btn_{r['notice_id']}"):
                     st.session_state.open_notice = r["notice_id"]
@@ -258,7 +292,7 @@ else:  # 카드형 목록(좁은 화면용, 디자인 검토 2026-09-28) — 공
                           key=f"nt_star_{r['notice_id']}", on_click=store.toggle_favorite, args=(r["notice_id"],))
 sort_state = st.session_state.get("nt_sort", {})
 sort_note = (str(sort_state["label"]) + (" 오름차순" if sort_state["direction"] == 1 else " 내림차순")
-             if sort_state.get("direction") else ("마감이 가까운 순" if nt_status == "마감 전" else "최근 공고 순"))
+             if sort_state.get("direction") else "마감이 가까운 순")
 with results_panel, st.container(horizontal=True, vertical_alignment="center", horizontal_alignment="right", key="nt_paging"):
     st.caption(f"전체 {len(f):,}건 중 {start + 1 if len(f) else 0:,}~{min(start + PAGE_SIZE, len(f)):,}번째 · "
                f"{sort_note}",
@@ -267,9 +301,18 @@ with results_panel, st.container(horizontal=True, vertical_alignment="center", h
         st.pagination(pages_total, key="nt_page", max_visible_pages=5)
 
 if st.session_state.get("open_notice"):
-    detail = queries.notice_detail(st.session_state.pop("open_notice"), profile)
+    detail_id = st.session_state.pop("open_notice")
+    selected_rows = f[f.notice_id.eq(detail_id)]
+    detail = queries.notice_detail(detail_id, profile, notice=selected_rows.iloc[0] if len(selected_rows) else None,
+                                   include_competition=False)
     if detail is not None:
-        show_detail(detail, today, dict(zip(STATUS_OPTIONS, STATUS_COLORS)).get(detail["status"], "gray"))
+        from service.notice_requirements import poll_detail_evidence
+        show_detail(detail, today, dict(zip(STATUS_OPTIONS, STATUS_COLORS)).get(detail["status"], "gray"),
+                    evidence_checker=fetch_evidence,
+                    evidence_reader=poll_detail_evidence,
+                    detail_updater=lambda value, result: queries.update_detail_evidence(value, profile, result),
+                    competition_loader=queries.notice_competition,
+                    on_evidence_updated=lambda: st.session_state.update(open_notice=detail["notice"]["notice_id"]))
 
 # ---- 내보내기 ----
 conditions_text = [f"공고일 {dates[0]}~{dates[-1]}" if dates else "공고일 전체", f"유형 {', '.join(st.session_state.nt_types or data.TYPES)}"]
@@ -293,9 +336,10 @@ def build_list_pdf() -> bytes:
     return rep.build()
 
 
-if export.empty:
-    st.stop()
 with export_slot:
-    st.download_button("CSV", export.to_csv(index=False).encode("utf-8-sig"), "국방공고_검색결과.csv",
-                       mime="text/csv", icon=":material/download:", on_click="ignore", type="tertiary", help="CSV 내보내기")
-    pdf_button("PDF", "국방공고_검색결과.pdf", build_list_pdf, key="nt_pdf", help="PDF 내보내기 · 최대 200건", type="tertiary")
+    from view.notice_export import notice_csv
+    st.download_button("CSV", notice_csv(export), "국방공고_검색결과.csv",
+                       mime="text/csv", icon=":material/download:", on_click="ignore", type="tertiary",
+                       disabled=export.empty, help="검색 결과가 없어 다운로드할 수 없습니다." if export.empty else "CSV 내보내기")
+    pdf_button("PDF", "국방공고_검색결과.pdf", build_list_pdf, key="nt_pdf", disabled=export.empty,
+               help="검색 결과가 없어 다운로드할 수 없습니다." if export.empty else "PDF 내보내기 · 최대 200건", type="tertiary")

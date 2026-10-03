@@ -89,6 +89,13 @@ def card(title: str, note: str = "", caution: str = ""):
             st.caption(caution)
 
 
+def empty_chart(*, height=CHART_H, key=None):
+    """데이터 없음은 제목 밑이 아닌 실제 그래프 높이의 정중앙에 표시한다."""
+    with st.container(height=height, border=False, key=key,
+                      horizontal_alignment="center", vertical_alignment="center"):
+        st.markdown("표시할 항목이 없습니다.", width="content")
+
+
 def show(chart: alt.Chart, height: int = CHART_H):
     st.altair_chart(finish(chart, height))
 
@@ -102,7 +109,7 @@ def kpi_tiles(items: list[dict], prefix: str):
     for i, (col, it) in enumerate(zip(st.columns(len(items)), items)):
         color = it.get("color", "blue")
         with col, st.container(border=True, height=STRETCH, key=f"kpi_{color}_{prefix}_{i}"):
-            delta = it.get("delta")
+            delta = it.get("delta") if it.get('show_delta', True) else None
             known_delta = delta not in (None, "", "–", "−", "-")
             with st.container(horizontal=True, vertical_alignment="center", gap="small",
                               key=f"kpi_heading_{prefix}_{i}"):
@@ -124,6 +131,11 @@ def kpi_tiles(items: list[dict], prefix: str):
                       label_visibility="collapsed",
                       delta_color=("blue" if str(delta).startswith("-") else "red") if known_delta else "off",
                       delta_arrow="auto" if known_delta else "off")
+            if it.get('sample_badge'):
+                st.badge(it['sample_badge'], color=it.get('sample_badge_color', 'gray'),
+                         help='관측 계약 건수에 대한 표시 안내입니다. 1~5건은 매우 적음, 6~29건은 제한적입니다. 비교 양쪽 연도가 모두 6건 이상일 때 증감을 표시하며, 30건 이상도 데이터의 완전성을 보장하지 않습니다.')
+            if it.get('sample_caption') and it['label'] != '계약 건수':
+                st.caption(it['sample_caption'])
             if it.get("note"):
                 st.markdown(it["note"])
 

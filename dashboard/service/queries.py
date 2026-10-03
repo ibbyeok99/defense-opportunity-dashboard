@@ -13,6 +13,8 @@ import pandas as pd
 from service import data, metrics
 from service.eligibility import judge, split_values
 from service.filters import YEAR_RANGE, ItemFilter, NoticeFilter, OverviewFilter, Profile
+from service.notice_sort import sort_by_deadline
+from service.notice_saved_details import saved_notice_details
 
 
 def _agency_col(role: str) -> str:
@@ -27,12 +29,12 @@ def _agency_options(df: pd.DataFrame) -> dict[str, list[str]]:
 
 # ---- 공고 ----
 def notice_agency_options() -> dict[str, list[str]]:
-    return _agency_options(data.notices())
+    return _agency_options(data._base_notices())
 
 
 def agency_option_labels() -> dict[str, dict[str, str]]:
     """필터 값은 유지하고 검색창에서만 기관명 (코드)를 표시한다."""
-    frame = data.notices()
+    frame = data._base_notices()
     labels = {}
     for role, stem in (("수요기관", "demand"), ("공고기관", "notice")):
         name_col, code_col = f"{stem}_agency_name", f"{stem}_agency_code"
@@ -46,16 +48,17 @@ def agency_option_labels() -> dict[str, dict[str, str]]:
     return labels
 
 
-def find_notices(f: NoticeFilter, profile: Profile, now: datetime) -> pd.DataFrame:
-    """조건에 맞는 공고 + 참여 판단(status)·남은 날(dday). 마감 전은 마감이 가까운 순, 최근 1개월은 최근 공고 순."""
-    df = data.notices()
+def find_notices(f: NoticeFilter, profile: Profile, now: datetime, *, stored_only=False) -> pd.DataFrame:
+    """조건에 맞는 공고 + 참여 판단(status)·남은 날(dday). 상태 필터와 무관하게 마감이 가까운 순."""
+    df = data.stored_notices() if stored_only else data.notices()
     out = df[df["procurement_type"].isin(f.types)]
     if f.item:
         out = out[out["item_code"] == f.item]
     kw = f.keyword.strip()
-    if kw:  # 공고명 또는 분류 번호
+    if kw:  # 공고명·분류 번호와 보완된 요건 근거
         out = out[out["notice_name"].str.contains(kw, case=False, na=False, regex=False)
-                  | out["item_code"].str.contains(kw, na=False, regex=False)]
+                  | out["item_code"].str.contains(kw, na=False, regex=False)
+                  | out.get("requirement_search_text", pd.Series("", index=out.index)).str.contains(kw, case=False, na=False, regex=False)]
     if f.status == "마감 전":
         out = out[out["bid_close_date"] >= now]
         limit = {"7일 안": 7, "30일 안": 30}.get(f.deadline)
@@ -74,7 +77,7 @@ def find_notices(f: NoticeFilter, profile: Profile, now: datetime) -> pd.DataFra
     if f.judge:
         out = out[out["status"].isin(f.judge)]
     out["dday"] = (out["bid_close_date"].dt.normalize() - pd.Timestamp(now.date())).dt.days
-    return out.sort_values(["bid_close_date", "notice_date"], ascending=[f.status == "마감 전", False])
+    return sort_by_deadline(out, now)
 
 
 def only_status(found: pd.DataFrame, statuses: list[str]) -> pd.DataFrame:
@@ -90,13 +93,18 @@ def notice_summary(found: pd.DataFrame) -> dict:
             "unknown_share": float(unknown)}
 
 
-def notice_detail(notice_id: str, profile: Profile) -> dict | None:
+def notice_detail(notice_id: str, profile: Profile, *, notice=None, include_competition=True) -> dict | None:
     """공고 한 건 + 참여 조건 비교표 + 이 분류의 과거 경쟁(최근 연도)·계약까지 일수."""
-    df = data.notices()
-    rows = df[df["notice_id"] == notice_id]
-    if rows.empty:
-        return None
-    n = rows.iloc[0]
+    if notice is None:
+        df = data.notices()
+        rows = df[df["notice_id"] == notice_id]
+        if rows.empty:
+            return None
+        n = rows.iloc[0]
+    else:
+        n = pd.Series(notice).copy()
+        if n.get('notice_id') != notice_id:
+            raise ValueError('선택한 상세 공고와 전달 행 불일치')
     status, lic, reg = judge(n.to_dict(), profile.region, list(profile.licenses))
     conditions = pd.DataFrame([
         ["면허", ", ".join(split_values(n["license_values"])) or n["license_state"],
@@ -104,11 +112,58 @@ def notice_detail(notice_id: str, profile: Profile) -> dict | None:
         ["지역", ", ".join(split_values(n["region_values"])) or n["region_state"], ", ".join(profile.region) or "미입력",
          reg.status, reg.reason],
     ], columns=["구분", "요구 조건", "내 조건", "판단", "이유"])
-    comp = data.competition_levels().set_index("item_code")
+    for index, kind in enumerate(("license", "region")):
+        review = n.get(f"{kind}_review_status", "미조회")
+        if review != "미조회":
+            if n[f"{kind}_state"] == "미확인" or review == "공식 업종 제한 없음":
+                values = str(n.get(f"{kind}_values", "") or "")
+                conditions.at[index, "요구 조건"] = review + (" — " + values if values else "")
+            conditions.at[index, "이유"] += f" · {review} · 근거 조회 {n.get('requirement_checked_at', '')}"
+    stats = notice_competition(n['item_code']) if include_competition else {'competition': None, 'contract_days': None}
+    from service.requirement_summary import summarize_participation
     return {"notice": n, "status": status, "conditions": conditions,
-            "competition": comp.loc[n["item_code"]] if n["item_code"] in comp.index else None,
-            "contract_days": data.contract_days().get(n["item_code"]),
+            "participation_requirements": summarize_participation(n.get('requirement_evidence')),
+            "saved_details": saved_notice_details(n),
+            **stats,
             "category": data.category_display(n["item_code"], n["category_value"])}
+
+
+def notice_competition(item_code):
+    comp = data.competition_levels().set_index('item_code')
+    return {'competition': comp.loc[item_code] if item_code in comp.index else None,
+            'contract_days': data.contract_days().get(item_code)}
+
+
+def update_detail_evidence(detail, profile, result):
+    from service.requirement_overlay import overlay
+    current = overlay(pd.DataFrame([detail['notice']]), [result]).iloc[0]
+    updated = notice_detail(current.notice_id, profile, notice=current, include_competition=False)
+    updated.update({key: detail[key] for key in ('competition', 'contract_days')})
+    return updated
+
+
+def favorite_requirement_rows(rows, reader):
+    """저장된 즐겨찾기 행만 요청한다. 상태 읽기는 완료를 기다리지 않는다."""
+    from service.requirement_overlay import overlay
+    snapshots, results = {}, []
+    rows = rows.drop_duplicates('notice_id').head(10)
+    for _, row in rows.iterrows():
+        needs_lookup = isinstance(row.get('requirement_evidence'), dict) or any(
+            row[kind + '_state'] == '미확인' or row.get(kind + '_requires_review', False)
+            for kind in ('license', 'region'))
+        snapshot = reader(row) if needs_lookup else {'phase': 'stored', 'message': 'DB 저장 요건'}
+        snapshots[row.notice_id] = snapshot
+        if snapshot.get('result'):
+            results.append(snapshot['result'])
+    # 완료 결과가 없는 행은 이미 연결한 사본/DB 값을 보존한다.
+    out = rows.copy()
+    if results:
+        refreshed = overlay(rows, results)
+        from service.requirement_overlay import identity
+        keys = {identity(result) for result in results}
+        mask = refreshed.apply(lambda row: identity(row) in keys, axis=1)
+        out.loc[mask, refreshed.columns] = refreshed.loc[mask]
+    return out, snapshots
 
 
 # ---- 품목 분석 ----

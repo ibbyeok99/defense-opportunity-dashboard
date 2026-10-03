@@ -24,7 +24,7 @@ class NoticeFilter:
     types: tuple[str, ...]
     item: str | None = None
     keyword: str = ""
-    status: str = "마감 전"          # "마감 전" | "최근 1개월"
+    status: str = "마감 전"          # "마감 전" | "최근 1개월" | "전체"
     deadline: str = "전체"           # "7일 안" | "30일 안" | "전체" (마감 전일 때만)
     agency_role: str = "수요기관"     # "수요기관" | "공고기관"
     agencies: tuple[str, ...] = ()

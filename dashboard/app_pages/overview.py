@@ -12,7 +12,7 @@ import streamlit as st
 
 from service import data, metrics, queries
 from service.filters import YEAR_RANGE, OverviewFilter
-from view.charts import card, kpi_tiles
+from view.charts import card, kpi_tiles, empty_chart
 from view.plotly_charts import bar_figure, line_figure, show, show_donut
 from view.fmt import CONTRACT_AMOUNT_MESSAGES, num, pct, region_display
 from view.pdf import Report
@@ -56,7 +56,7 @@ with filter_area():
         amounts = amount_filter("ov", list(metrics.AMOUNT_BINS), metrics.AMOUNT_NOTE)
         outcomes = st.pills("낙찰·유찰 여부", metrics.OUTCOMES, selection_mode="multi", key="ov_outcome",
                             persist_state="session")
-        st.caption(":gray[아무것도 고르지 않으면 전체 표시됩니다.]")
+        st.caption(":gray[상세 조건을 선택하지 않으면 해당 조건으로 제한하지 않습니다.]")
 
 
 # ---- 계산(service) ----
@@ -109,12 +109,12 @@ with tab_size:
     with left, card("연도별 공고 수는 어떻게 변했나요?", "유형별 국방 공고 수(건)"):
         with st.container(key="ov_size_plot_left"):
             show(line_figure(notice_year, "연도", "notice_count", y_title="공고 수 (건)",
+                             x_title="공고 연도", annual=True,
                              series="procurement_type", integer=True), key="ov_notices_chart")
     share = res["share"]
     with right, card("어느 유형 공고가 많나요?", f"{years[0]}~{years[1]}년 유형별 공고 비중"):
-        if len(share):
-            with st.container(key="ov_size_plot_right"):
-                show_donut(share)
+        with st.container(key="ov_size_plot_right"):
+            show_donut(share)
     krw = res["contract_type_year"].copy()
     krw["연도"] = krw["year"].astype(str)
     krw = krw[krw["procurement_type"] != "외자"].assign(amount_eok=lambda d: d["contract_amount"] / 1e8)
@@ -130,8 +130,10 @@ with tab_size:
         elif amount_view == "전체 규모 비교":
             if amount_state != "available":
                 st.info(CONTRACT_AMOUNT_MESSAGES[amount_state], icon=":material/info:")
+                empty_chart(height=280, key="empty_ov_amount_total_chart")
             else:
                 show(bar_figure(krw, "연도", "amount_eok", value_title="계약금액 (억원)",
+                                category_title="계약 연도",
                                 series="procurement_type", height=280), key="ov_amount_total_chart")
         else:
             # 반응형 열을 사용하고 각 유형에 0 기준 독립 선형 축을 둔다.
@@ -143,39 +145,46 @@ with tab_size:
                     sample_state = metrics.contract_amount_availability(sample)
                     if sample_state != "available":
                         st.info(CONTRACT_AMOUNT_MESSAGES[sample_state], icon=":material/info:")
+                        empty_chart(height=252, key=f"empty_ov_amount_{typ}_chart")
                     else:
                         show(bar_figure(sample, "연도", "amount_eok",
+                                        category_title="계약 연도",
                                         value_title="계약금액 (억원)", series="procurement_type", show_legend=False,
                                         height=252, max_category_ticks=4), key=f"ov_amount_{typ}_chart")
 
 with tab_comp:
     c1, c2 = st.columns(2)
-    with c1, card("개찰 한 번에 몇 곳이 참여하나요?", "개찰 1건당 참가업체 수의 중앙값. 공사는 수백 곳이라 로그 눈금으로 그렸습니다."):
-        if len(ev_year):
-            show(line_figure(ev_year[ev_year["median_bidders"] > 0], "연도", "median_bidders",
-                             y_title="참가업체 수 (곳, 로그 눈금)", series="procurement_type", integer=True,
-                             log=True, ticks=[1, 3, 10, 30, 100, 300, 1000]), key="ov_bidders_chart")
+    with c1, card("개찰 한 번에 몇 곳이 참여하나요?", "개찰 1건당 참가업체 수의 중앙값. 로그 눈금은 같은 거리에서 같은 배수 차이를 나타내며, 0은 표시하지 않습니다."):
+        show(line_figure(ev_year[ev_year["median_bidders"] > 0], "연도", "median_bidders",
+                         x_title="개찰 연도", annual=True, y_title="참가업체 수 중앙값 (곳, 로그 눈금)", series="procurement_type", integer=True,
+                         log=True, ticks=[1, 3, 10, 30, 100, 300, 1000]), key="ov_bidders_chart")
     with c2, card("단독입찰 비율은 얼마나 되나요?", "단독입찰 비율 = 참여 업체가 1곳뿐인 개찰 ÷ 참여가 있었던 개찰"):
-        if len(ev_year):
-            show(line_figure(ev_year, "연도", "single_bid_rate", y_title="단독입찰 비율 (%)",
-                             series="procurement_type", percent=True), key="ov_single_chart")
+        show(line_figure(ev_year, "연도", "single_bid_rate", y_title="단독입찰 비율 (%)",
+                         x_title="개찰 연도", annual=True,
+                         series="procurement_type", percent=True), key="ov_single_chart")
 
 top_ag, top_cat = res["top_agencies"], res["top_categories"]
 with tab_major:
     c3, c4 = st.columns(2)
     with c3, card(f"공고를 가장 많이 낸 {role} TOP 10", f"{years[0]}~{years[1]}년 공고 수"):
-        show(bar_figure(top_ag, "agency", "notice_count", category_title=None, value_title="공고 수 (건)",
+        show(bar_figure(top_ag, "agency", "notice_count", category_title=role, value_title="공고 수 (건)",
                         horizontal=True, sort_desc=True, integer=True,
                         height=max(420, 34 * max(len(top_ag), len(top_cat)) + 100)), key="ov_agencies_chart")
     with c4, card("개찰이 많은 품목·업종 TOP 10", f"{years[0]}~{years[1]}년 개찰 수"):
-        show(bar_figure(top_cat, "분류", "event_count", category_title=None, value_title="개찰 수 (건)",
+        show(bar_figure(top_cat, "분류", "event_count", category_title="품목·업종", value_title="개찰 수 (건)",
                         horizontal=True, sort_desc=True, integer=True, series="procurement_type",
                         height=max(420, 34 * max(len(top_ag), len(top_cat)) + 100)), key="ov_categories_chart")
 
 with tab_contract:
     from service.institution_names import contract_institution_names
+    try:
+        reviewed_names = data.defense_institutions()
+    except FileNotFoundError:
+        # 전달본은 실데이터 대장을 포함하지 않는다. 이름 명부는 판정에 사용하지 않는다.
+        reviewed_names = pd.DataFrame(columns=["기관코드", "기관명"])
+        st.caption("계약기관명은 확인된 기관코드로 연결합니다. 이름을 확인하지 못한 기관은 코드와 함께 표시합니다.")
     show_contract_patterns(res["contract_type_year"], res["contract_supported"], data.institutions(),
-                           years=years, types=types, names=contract_institution_names(data.defense_institutions()))
+                           years=years, types=types, names=contract_institution_names(reviewed_names))
 
 conditions = [f"{years[0]}~{years[1]}년", f"유형 {', '.join(types)}"]
 if agencies:
@@ -185,7 +194,7 @@ if region:
 
 
 def build_pdf() -> bytes:
-    rep = Report("국방 조달 시장 개요", " · ".join(conditions), footer="Frontline Data · 국방 조달 탐색")
+    rep = Report("국방 조달 시장 동향", " · ".join(conditions), footer="Frontline Data · 국방 조달 탐색")
     rep.kv(kpis)
     pivot = notice_year.pivot_table(index="year", columns="procurement_type", values="notice_count", aggfunc="sum")
 
@@ -193,7 +202,7 @@ def build_pdf() -> bytes:
         for t in pivot.columns:
             ax.plot(pivot.index, pivot[t], marker="o", label=t)
         ax.set_title("연도별 공고 수", fontsize=10)
-        ax.set_xlabel("연도", fontsize=8)
+        ax.set_xlabel("공고 연도", fontsize=8)
         ax.set_ylabel("공고 수 (건)", fontsize=8)
         ax.legend()
 
@@ -209,4 +218,4 @@ def build_pdf() -> bytes:
 
 
 with export_slot:
-    pdf_button("PDF", f"국방조달_시장개요_{years[0]}-{years[1]}.pdf", build_pdf, key="ov_pdf", type="tertiary", help="PDF 내보내기")
+    pdf_button("PDF", f"국방조달_시장동향_{years[0]}-{years[1]}.pdf", build_pdf, key="ov_pdf", type="tertiary", help="PDF 내보내기")

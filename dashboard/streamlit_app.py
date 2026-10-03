@@ -11,8 +11,7 @@ import streamlit as st
 from service import data
 from service.api_transport import DataAPIError
 from service.eligibility import STATUS_OPTIONS
-from view import sidebar_interactions, store, style, table_interactions
-from view.assets import sidebar_brand
+from view import body_interactions, sidebar_interactions, store, style, table_interactions
 from view.navigation import APP_TITLE, PAGE_LABELS, app_header
 from view.plotly_charts import mount_bar_gradients
 
@@ -44,10 +43,10 @@ if page.url_path == "":
 style.apply(page.title)  # 화면별 색 전환 없이 같은 브랜드·사이드바 구조를 유지한다.
 sidebar_interactions.mount()
 table_interactions.mount()
+body_interactions.mount(page.url_path)
 app_header(pages[""][1:], page)
 # 화면별 필터 자리(view.widgets.filter_area)와 관리자 버튼·브라우저 저장을 page.run() 전에 그린다.
 # 그래야 화면이 st.stop()으로 멈춰도(예: 조달 유형 미선택) 빠지지 않는다.
-sidebar_brand()
 st.session_state._filter_slot = st.sidebar.container(key="sidebar_filter_body")
 st.session_state._sidebar_actions_slot = st.sidebar.container(key="sidebar_actions", gap="xsmall")
 
@@ -59,7 +58,8 @@ with st.session_state._filter_slot:
 
 if page.url_path in {"item", "overview"}:
     mount_bar_gradients()
-try:
-    page.run()
-except DataAPIError as exc:
-    st.error(str(exc))
+with st.container(key="dashboard_page_content"):
+    try:
+        page.run()
+    except DataAPIError as exc:
+        st.error(str(exc))

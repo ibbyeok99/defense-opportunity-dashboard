@@ -1,7 +1,7 @@
 """나라장터 공고 원문 PDF에서 검토용 근거를 추출한다.
 
-이 모듈은 네트워크 요청이나 DB 쓰기를 수행하지 않는다. 공식 원문/첨부 PDF
-바이트를 호출자가 전달하면 필드 후보와 페이지·원문 인용을 반환한다.
+공식 PDF 한 건의 제한적 읽기와 필드 후보·페이지·원문 인용을 제공한다.
+DB 쓰기는 수행하지 않는다.
 자동 적격 판정은 하지 않으며, 추출 실패는 제한 없음으로 해석하지 않는다.
 """
 
@@ -61,7 +61,8 @@ class RequirementEvidence:
 def _official_source_url(source_url: str) -> str:
     parsed = urlparse(source_url)
     host = (parsed.hostname or "").lower()
-    if parsed.scheme != "https" or host not in OFFICIAL_HOSTS or parsed.port not in (None, 443):
+    if (parsed.scheme != "https" or host not in OFFICIAL_HOSTS
+            or parsed.port not in (None, 443) or parsed.username or parsed.password):
         raise ValueError("출처 URL은 HTTPS 나라장터(g2b.go.kr) 주소여야 합니다.")
     return source_url
 

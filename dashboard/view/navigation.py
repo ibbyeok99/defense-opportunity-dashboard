@@ -23,7 +23,8 @@ def app_header(pages, current_page):
     with st.container(key="app_sticky_header"):
         with st.container(horizontal=True, vertical_alignment="top", key="page_heading_app"):
             with st.container(width="stretch", gap="xxsmall", key="app_title_block"):
-                st.title(APP_TITLE, anchor=False)
+                with st.container(key="app_title_link"):
+                    st.page_link("app_pages/notices.py", label=APP_TITLE, icon="", width="content")
                 with st.container(key="app_subtitle"):
                     st.markdown(APP_SUBTITLE)
             st.session_state._export_slot = st.container(

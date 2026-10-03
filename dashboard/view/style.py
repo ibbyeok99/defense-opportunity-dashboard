@@ -17,11 +17,29 @@ SIDEBAR_FILTER_TOP_PX = 75
 SIDEBAR_GRADIENT_BOTTOM_OPACITY = 0.12
 
 # 공고 상세 제목 글자 크기만 조절한다(단위: rem). 카드 글자 크기와는 별개다.
-NOTICE_DETAIL_TITLE_FONT_SIZE_REM = 2.0
+NOTICE_DETAIL_TITLE_FONT_SIZE_REM = 2.2
 
 # 제목·메뉴의 기존 좌측 정렬을 유지한다(단위: px).
 APP_TITLE_OFFSET_X_PX = -21
-APP_TITLE_OFFSET_Y_PX = 0
+APP_TITLE_OFFSET_Y_PX = -18
+# 양수는 아래로, 음수는 위로. 배경 이미지 유무와 관계없이 각각 적용한다.
+APP_SUBTITLE_OFFSET_Y_PX = -8
+# 부제목의 미세한 들여쓰기(px). 제목·메뉴 위치와 독립적으로 적용한다.
+APP_SUBTITLE_INDENT_PX = 5
+APP_TITLE_FONT_SIZE_PX = 40
+APP_SUBTITLE_FONT_SIZE_PX = 20
+# CSV/PDF: 제목 행의 우측 상단 기준(px). TOP 양수는 아래, RIGHT 양수는 왼쪽.
+# 좁은 본문에서는 별도 행으로 배치되므로 이 이동값을 적용하지 않는다.
+APP_EXPORT_TOP_PX = -25
+APP_EXPORT_RIGHT_PX = 5
+# 분야별 분석의 진행 중 공고 버튼 위치(px). X 양수는 오른쪽, Y 양수는 아래.
+# 위치만 이동하므로 큰 값은 주변 내용과 겹칠 수 있다.
+ITEM_OPEN_NOTICE_OFFSET_X_PX = -5
+ITEM_OPEN_NOTICE_OFFSET_Y_PX = -13
+# 하단 문구/본문 이동(px). 양수는 아래, 음수는 위. 상단 문구는 고정한다.
+# -8px부터 확인한다. 큰 음수는 상단 문구 및 고정된 버튼과 카드를 겹치게 할 수 있다.
+# 넓은 화면은 버튼 기준을 상단에 분리하고, 좁은 화면은 자연스러운 줄바꿈을 우선한다.
+ITEM_CONTEXT_TEXT_EXTRA_GAP_PX = -10
 # 공통 상단 영역 시작점. 기존 3.75rem의 절반이며, 도구 모음 높이도 함께 맞춘다.
 APP_HEADER_TOP_REM = 1.875
 
@@ -29,7 +47,9 @@ APP_HEADER_TOP_REM = 1.875
 APP_HEADER_ART_OPACITY = 0.62
 
 # 후보3 기준의 공통 카드 스타일. 사용자 글자 크기·필터 시작 위치는 보존한다.
-SIDEBAR_WIDTH_PX = 288
+SIDEBAR_WIDTH_PX = 345.6  # 기존288px의1.2배. 본문 폭/중앙 이동도 이 값을 공유한다.
+# 사이드바와 본문의 전환 시간·가속/감속을 한 값으로 관리한다.
+SIDEBAR_MOTION = ".3s cubic-bezier(.22, 1, .36, 1)"
 
 
 def apply(_page_title: str = ""):
@@ -39,6 +59,7 @@ def apply(_page_title: str = ""):
     강조색은 KPI 의미와 차트 계열을 구분하는 데 사용한다.
     """
     side = '[data-testid="stSidebar"]'
+    item_context_extra_gap = ITEM_CONTEXT_TEXT_EXTRA_GAP_PX
     mode = "dark" if st.context.theme.type == "dark" else "light"
     sidebar_accent = (st.get_option(f"theme.{mode}.sidebar.primaryColor")
                       or st.get_option("theme.sidebar.primaryColor") or "#FFB340")
@@ -53,7 +74,7 @@ def apply(_page_title: str = ""):
     header_art = header_background_url()
     header_art_css = f"""
 [data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header) {{
-  margin-inline: -3rem !important; width: calc(100% + 6rem) !important; padding-inline: 3.4rem !important;
+  margin-inline: 0 !important; width: 100% !important; padding-inline: .4rem !important;
 }}
 [data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header)::before {{
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -63,11 +84,11 @@ def apply(_page_title: str = ""):
   mask-composite: intersect;
 }}
 .st-key-app_sticky_header {{ position: relative; min-height: 190px; padding-top: 38px; gap: 0; justify-content: space-between; border-bottom: 1px solid {border}; }}
-.st-key-page_heading_app > [data-testid="stLayoutWrapper"]:has(> .st-key-exports_app) {{ position: absolute; right: 0; top: -12px; }}
-.st-key-app_sticky_header .st-key-page_heading_app h1, .st-key-app_sticky_header .st-key-page_menu {{ transform: none; }}
+.st-key-app_sticky_header .st-key-app_title_link {{ transform: translateY({APP_TITLE_OFFSET_Y_PX}px); }}
+.st-key-app_sticky_header .st-key-page_menu {{ transform: none; }}
 @media (max-width: 768px) {{
   [data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header) {{
-    margin-inline: -1rem !important; width: calc(100% + 2rem) !important; padding-inline: 1rem !important;
+    margin-inline: 0 !important; width: 100% !important; padding-inline: 0 !important;
   }}
   .st-key-app_sticky_header {{ min-height: 170px; padding-top: 14px; gap: .5rem; }}
 }}
@@ -76,6 +97,7 @@ def apply(_page_title: str = ""):
 /* 사이드바 배경만 아래로 갈수록 미세하게 밝아진다. 두 모드에서 같은 효과를 사용한다. */
 {side} {{
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, {SIDEBAR_GRADIENT_BOTTOM_OPACITY}) 100%);
+  transition: transform {SIDEBAR_MOTION}, min-width {SIDEBAR_MOTION}, max-width {SIDEBAR_MOTION} !important;
 }}
 /* 넓은 화면에서 필터가 내용을 압도하지 않도록 폭을 제한한다. */
 {side}[aria-expanded="true"] {{
@@ -86,7 +108,18 @@ def apply(_page_title: str = ""):
 {side} [data-testid="stSidebarContent"] {{
   display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
 }}
-{side} [data-testid="stSidebarHeader"] {{ display: none !important; }}
+/* 닫기는 sidebar 오른쪽 끝, 열기는 화면 왼쪽. 높이·크기와 native 동작은 같다. */
+{side} [data-testid="stSidebarHeader"] {{
+  display: flex !important; position: absolute; top: 8px; right: .35rem; left: auto;
+  align-items: flex-start; width: 32px; height: 32px !important; padding: 0; margin: 0; z-index: 2;
+}}
+{side} [data-testid="stLogoSpacer"] {{ display: none; }}
+{side} [data-testid="stSidebarCollapseButton"] {{ visibility: visible !important; opacity: 1 !important; margin: 0; }}
+{side} [data-testid="stSidebarCollapseButton"] button,
+[data-testid="stExpandSidebarButton"] {{ width: 32px !important; height: 32px !important; padding: 0 !important; margin: 0; }}
+[data-testid="stExpandSidebarButton"] {{ position: fixed; top: 8px; bottom: auto; }}
+{side} [data-testid="stSidebarCollapseButton"] button {{ position: absolute; top: 0; left: 0; right: auto; }}
+[data-testid="stExpandSidebarButton"] {{ left: 12px; right: auto; }}
 {side} [data-testid="stSidebarUserContent"] {{
   position: relative;
   padding-top: {SIDEBAR_FILTER_TOP_PX}px !important; padding-bottom: 1rem !important;
@@ -103,12 +136,6 @@ def apply(_page_title: str = ""):
 }}
 /* 조건의 펼침 여부와 무관하게 같은 상단 위치에서 시작한다. */
 {side} .st-key-sidebar_filter_body {{ margin-block: 0; flex: 0 0 auto; height: auto; }}
-/* 로고는 필터 스크롤 밖의 상단 여백에만 배치한다. 원본 PNG는 보존한다. */
-{side} [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_brand) {{ position: absolute; top: 16px; left: calc(50% - 112px); width: 224px; flex: none; }}
-.st-key-sidebar_brand {{ position: relative; overflow: hidden; width: 224px !important; aspect-ratio: var(--sidebar-logo-aspect); }}
-.st-key-sidebar_brand [data-testid="stImage"] {{ position: absolute; left: var(--sidebar-logo-left); top: var(--sidebar-logo-top); width: var(--sidebar-logo-width) !important; max-width: none; }}
-.st-key-sidebar_brand [data-testid="stImage"] img {{ width: 100% !important; height: auto; }}
-.st-key-sidebar_brand [data-testid="stElementContainer"], .st-key-sidebar_brand [data-testid="stFullScreenFrame"] > div {{ position: static; width: 100%; }}
 {side} [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_actions) {{ flex: 0 0 auto; }}
 {side} [data-testid="stExpander"] summary {{ min-height: 2.4rem !important; }}
 /* 상세·회사 조건: 제목·아이콘은 흰색, 실제 열림 상태의 ▲/▼만 주황색. */
@@ -128,9 +155,17 @@ def apply(_page_title: str = ""):
 .st-key-plotly_donut_guard {{ display: none; }}
 .st-key-plotly_bar_gradient_guard {{ display: none; }}
 .st-key-table_menu_guard {{ display: none; }}
+.st-key-body_scroll_guard {{ display: none; }}
 {side} [data-testid="stExpanderDetails"] {{ padding-top: .35rem !important; padding-bottom: .5rem !important; }}
 /* 입력·선택칸의 색도 사이드바의 기본 테마를 따른다. */
 /* 고객용 화면에서 관리자 입구는 본문 맨 끝에만 둔다. */
+/* native 토글 높이 변화에 따른 브라우저 자동 스크롤 보정을 끈다. */
+[data-testid="stMain"] {{ overflow-anchor: none; }}
+/* 고정 높이/내부 스크롤 없이 본문은 최소 한 화면, 긴 내용은 자연스럽게 늘어난다. */
+.st-key-dashboard_page_content {{
+  min-height: max(100vh, var(--frontline-body-scroll-floor, 0px));
+  min-height: max(100dvh, var(--frontline-body-scroll-floor, 0px));
+}}
 [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > :has(> .st-key-admin_foot),
 [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > .st-key-admin_foot {{ order: 9999; }}
 .st-key-admin_foot {{ align-items: flex-end; margin-top: 2.5rem; opacity: .45; }}
@@ -143,13 +178,29 @@ def apply(_page_title: str = ""):
 .st-key-table_scroll_hint {{ display: none; }}
 @media (max-width: 768px) {{
   {side}[aria-expanded="true"] {{ width: 90vw !important; min-width: 90vw !important; max-width: 90vw !important; }}
-  {side} [data-testid="stSidebarHeader"] {{ display: flex !important; height: 2.35rem !important; margin-bottom: 0 !important; }}
 }}
 /* 사이드바·브라우저 확대에 따라 달라지는 실제 본문 폭으로 열을 재배치한다. */
 [data-testid="stMainBlockContainer"] {{
   padding-top: {APP_HEADER_TOP_REM}rem;
   container-type: inline-size;
   container-name: dashboard_main;
+}}
+/* 데스크톱에서는 같은 스크롤 영역·본문 폭을 유지하고 위치만 이동한다.
+   접기 중 부모 폭 변화로 차트가 재배치되지 않게 sidebar를 문서 흐름에서 분리한다. */
+@media (min-width: 769px) {{
+  {side} {{ position: absolute !important; top: 0; left: 0; }}
+  [data-testid="stMain"] {{ width: 100% !important; scrollbar-gutter: stable; }}
+  [data-testid="stMainBlockContainer"] {{
+    max-width: calc(100% - {SIDEBAR_WIDTH_PX}px) !important; margin-inline: auto;
+    transform: translateX({SIDEBAR_WIDTH_PX / 2:g}px);
+    transition: transform {SIDEBAR_MOTION};
+  }}
+  body:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMainBlockContainer"] {{
+    transform: translateX(0);
+  }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+  [data-testid="stMainBlockContainer"], {side} {{ transition: none !important; }}
 }}
 /* native 도구 모음 아래부터 제목·메뉴·내보내기를 함께 유지한다. */
 [data-testid="stHeader"], [data-testid="stToolbar"] {{ height: {APP_HEADER_TOP_REM}rem; min-height: 0; }}
@@ -159,43 +210,57 @@ def apply(_page_title: str = ""):
   padding-inline: 21px; margin-inline: -21px; width: calc(100% + 42px); max-width: none;
 }}
 {header_art_css}
-/* 높이를 고정하지 않아 좁은 화면에서 제목·메뉴가 줄바꿈해도 본문 공간을 확보한다. */
-.st-key-page_heading_app h1 {{
-  padding-top: 0;
-  transform: translate({APP_TITLE_OFFSET_X_PX}px, {APP_TITLE_OFFSET_Y_PX}px);
-  word-break: keep-all;
-  overflow-wrap: normal;
+/* 내보내기의 기준점은 제목 행이다. 제목 글자 이동값·배경 유무에 종속되지 않는다. */
+.st-key-page_heading_app {{ position: relative; padding-right: 156px; }}
+.st-key-page_heading_app > [data-testid="stLayoutWrapper"]:has(> .st-key-exports_app) {{
+  position: absolute; right: {APP_EXPORT_RIGHT_PX}px; top: {APP_EXPORT_TOP_PX}px; z-index: 2;
 }}
+.st-key-app_title_link {{ transform: translate({APP_TITLE_OFFSET_X_PX}px, {APP_TITLE_OFFSET_Y_PX}px); }}
+/* 공통 제목·부제는 같은 글꼴을 사용하고 굵기만 한 단계 구분한다. */
+.st-key-app_title_link a, .st-key-app_subtitle p {{ font-family: var(--st-heading-font); }}
+.st-key-app_title_link a {{
+  color: inherit !important; background: transparent !important; border: 0; padding: 0;
+  font-size: {APP_TITLE_FONT_SIZE_PX}px; font-weight: 700; line-height: 1.2;
+  text-decoration: none; border-radius: 0; white-space: normal;
+}}
+.st-key-app_title_link a [data-testid="stMarkdownContainer"],
+.st-key-app_title_link a p {{ font: inherit !important; margin: 0; white-space: normal; word-break: keep-all; }}
+.st-key-app_title_link a:focus-visible {{ outline: 2px solid currentColor; outline-offset: 3px; }}
+/* 높이를 고정하지 않아 좁은 화면에서 제목·메뉴가 줄바꿈해도 본문 공간을 확보한다. */
 .st-key-app_title_block {{ gap: 0; }}
 .st-key-app_title_block h1 {{ padding-bottom: 0; }}
 .st-key-app_title_block [data-testid="stMarkdownContainer"] {{ margin-block: 0 !important; }}
 .st-key-app_title_block, .st-key-app_subtitle {{ height: auto !important; }}
 .st-key-app_title_block > [data-testid="stElementContainer"],
 .st-key-app_title_block > [data-testid="stLayoutWrapper"] {{ flex: 0 0 auto; min-height: min-content; }}
-.st-key-app_subtitle {{ padding-top: 0; }}
-.st-key-app_subtitle p {{ font-size: 1.2rem; line-height: 1.4; font-weight: 400; color: light-dark(#415A77, #B7C4D7); margin-block: 0; }}
+.st-key-app_subtitle {{ padding-top: 0; transform: translateY({APP_SUBTITLE_OFFSET_Y_PX}px); }}
+.st-key-app_subtitle p {{ font-size: {APP_SUBTITLE_FONT_SIZE_PX}px; line-height: 1.4; font-weight: 400; color: light-dark(#48617F, #B7C4D7) !important; margin-block: 0; padding-inline-start: {APP_SUBTITLE_INDENT_PX}px; }}
 /* 상단 탐색 메뉴의 시작점도 공통 대제목의 왼쪽 이동값에 맞춘다. */
 .st-key-page_menu {{ transform: translateX({APP_TITLE_OFFSET_X_PX}px); }}
 /* 좁은 화면은 본문 왼쪽 여백이 17px이므로 제목 이동을 최대 8px로 제한한다. */
 @media (max-width: 768px) {{
   [data-testid="stMainBlockContainer"] [data-testid="stLayoutWrapper"]:has(> .st-key-app_sticky_header) {{ padding-inline: 8px; margin-inline: -8px; width: calc(100% + 16px); }}
-  .st-key-page_heading_app h1 {{
-    transform: translate(max(-8px, {APP_TITLE_OFFSET_X_PX}px), {APP_TITLE_OFFSET_Y_PX}px);
-  }}
+  .st-key-app_title_link a {{ font-size: clamp(1.3rem, 5.2vw, 2rem); }}
+  .st-key-app_subtitle p {{ font-size: clamp(.9rem, 3.6vw, 1.2rem); }}
+  .st-key-card_quality_metadata [data-testid="stMetricValue"] {{ font-size: 1.15rem; line-height: 1.4; overflow-wrap: anywhere; }}
   .st-key-page_menu {{ transform: translateX(max(-8px, {APP_TITLE_OFFSET_X_PX}px)); }}
+  .st-key-app_title_link {{ transform: translate(max(-8px, {APP_TITLE_OFFSET_X_PX}px), {APP_TITLE_OFFSET_Y_PX}px); }}
 }}
 /* 사용자 승인: 버튼 박스 대신 웹 링크 메뉴, 활성 밑줄·hover·키보드 포커스. */
 .st-key-page_menu a {{
-  border-radius: 0; background: transparent !important;
+  border-radius: 0;
   padding: .55rem .75rem; border-bottom: 3px solid transparent;
   color: inherit !important;
 }}
+.st-key-page_menu_public a {{ background: transparent !important; }}
 .st-key-page_menu [class*="st-key-nav_active_"] a {{ border-bottom-color: currentColor; }}
 .st-key-page_menu a:hover {{ border-bottom-color: currentColor; }}
 .st-key-page_menu a:focus-visible {{ outline: 2px solid currentColor; outline-offset: 2px; }}
 /* 상세 값 위의 제목 여백을 줄여 제목과 값을 붙인다. */
 .st-key-notice_detail_title h2 {{
   font-size: {NOTICE_DETAIL_TITLE_FONT_SIZE_REM}rem;
+  padding-block: 0;
+  margin-block: 0;
   line-height: 1.3;
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -265,6 +330,13 @@ def apply(_page_title: str = ""):
 .st-key-page_menu a p {{ font-size: .95rem; }}
 /* 사용자 탐색은 왼쪽, 관리자·데이터 기준 링크는 오른쪽 끝에 한 묶음으로 유지한다. */
 .st-key-page_menu > div:has(> .st-key-page_menu_management) {{ margin-left: auto; }}
+/* 관리자 전용 두 메뉴만 배경 이미지와 분리한다. 활성 밑줄/포커스 표시는 유지한다. */
+.st-key-page_menu .st-key-page_menu_management a {{
+  background: light-dark(rgba(243, 247, 252, .90), rgba(32, 36, 43, .90)) !important;
+  color: light-dark(#0D1930, #F7F8FA) !important; font-weight: 500;
+  border-radius: 4px;
+}}
+.st-key-page_menu_management a > span {{ color: inherit !important; }}
 /* 데이터 기준의 정적 연결률 표는 긴 기준 문구를 자르지 않고 줄바꿈한다. */
 .st-key-card_quality_links table {{ width: 100%; }}
 .st-key-card_quality_links :is(th, td) {{ white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }}
@@ -317,6 +389,7 @@ def apply(_page_title: str = ""):
 [class*="st-key-card_"] [data-testid="stCaptionContainer"] p {{ color: {caption}; font-size: .9rem; line-height: 1.5; }}
 [data-testid="stMainBlockContainer"] [data-testid="stTabs"] [role="tablist"] {{ gap: 1.5rem; border-bottom: 1px solid {border}; }}
 [data-testid="stMainBlockContainer"] [data-testid="stTabs"] [role="tab"] {{ padding-inline: .35rem; font-weight: 600; }}
+.st-key-item_context_action {{ transform: translateX({ITEM_OPEN_NOTICE_OFFSET_X_PX}px) translateY({ITEM_OPEN_NOTICE_OFFSET_Y_PX}px); }}
 .st-key-it_go_notices button {{ min-height: 43.2px; border-radius: 10px; padding: .5rem 1.75rem; box-shadow: 0 6px 16px rgba(0,91,255,.12); background-image: linear-gradient(135deg, rgba(255,255,255,.2), rgba(255,255,255,0) 70%); }}
 @supports (width: calc-size(max-content, size * 1.1)) {{
   .st-key-it_go_notices button {{ width: calc-size(max-content, size * 1.1); max-width: 100%; padding-inline: 1rem; }}
@@ -327,15 +400,33 @@ def apply(_page_title: str = ""):
 .st-key-item_context h3 span {{ border-radius: 8px; }}
 .st-key-item_category_heading {{
   background: light-dark(#E1EBF9, #354155); border-radius: 8px;
-  padding: .4rem .85rem; gap: .65rem; max-width: 100%; align-items: center;
+  padding: .4rem .85rem; gap: .65rem; max-width: 100%; align-items: center; overflow: visible;
 }}
 .st-key-item_category_heading [data-testid="stMarkdownContainer"] {{ margin-bottom: 0; min-width: 0; }}
 .st-key-item_category_heading > [data-testid="stLayoutWrapper"]:has(h3) {{ flex: 1 1 auto; min-width: 0; }}
 .st-key-item_category_heading h3 {{ font-size: 1.35rem; font-weight: 600; line-height: 1.4; padding-block: 0; margin-block: 0; word-break: keep-all; overflow-wrap: anywhere; }}
 .st-key-item_procurement_icon {{ width: 36px !important; flex-shrink: 0; border-radius: 6px; background: light-dark(#E1EBF9, #354155); }}
 .st-key-item_procurement_icon img {{ width: 36px; height: 36px; }}
+.st-key-item_procurement_icon .procurement-type-hover {{ position: relative; display: block; width: 36px; height: 36px; cursor: help; border-radius: 4px; }}
+.st-key-item_procurement_icon .procurement-type-hover:focus-visible {{ outline: 2px solid var(--st-primary-color); outline-offset: 2px; }}
+.st-key-item_procurement_icon .procurement-type-tooltip {{ display: none; position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 1000; padding: 4px 8px; border: 1px solid var(--st-border-color); border-radius: 6px; background: var(--st-secondary-background-color); color: var(--st-text-color); font: 14px/1.4 var(--st-font); white-space: nowrap; box-shadow: 0 3px 10px #0002; pointer-events: none; }}
+.st-key-item_procurement_icon .procurement-type-hover:is(:hover, :focus) .procurement-type-tooltip {{ display: block; }}
 .st-key-item_context {{ margin-top: -12px; margin-bottom: -.5rem; }}
 .st-key-item_context_row {{ margin-top: 4px; }}
+/* 상단 문구는 고정하고 하단 문구/아래 본문을 실제 간격만큼 이동한다.
+   하단 문구가 없는 빈 개찰 결과에는 적용하지 않는다. */
+.st-key-item_context_text > [data-testid="stElementContainer"]:has([data-testid="stCaptionContainer"]) {{
+  margin-top: {item_context_extra_gap}px !important;
+}}
+/* 넓은 본문에서는 버튼 높이를 행 계산에서 분리하고 상단 기준으로 고정한다.
+   기존 버튼 위치의 상단 간격(기본 글자17px에서 약23.15px)을 유지한다.
+   좁은 화면은 버튼이 별도 행으로 내려가므로 기존 자연스러운 배치를 보존한다. */
+@container dashboard_main (min-width: 601px) {{
+  .st-key-item_context_row:has(.st-key-item_context_text > [data-testid="stElementContainer"] [data-testid="stCaptionContainer"]) > [data-testid="stLayoutWrapper"]:has(> .st-key-item_context_action) {{
+    align-self: flex-start; height: 0 !important; min-height: 0 !important;
+    margin-top: 1.362rem; overflow: visible;
+  }}
+}}
 /* 검색 조건만 보조 정보로 부드럽게 표시. opacity/filter는 자식 글씨까지 흐려져 사용하지 않는다. */
 .st-key-notice_filter_summary, [class*="st-key-search_filter_summary_"] {{
   background: light-dark(rgba(235,243,255,.55), rgba(41,55,77,.55));
@@ -401,7 +492,10 @@ def apply(_page_title: str = ""):
 [class*="st-key-chart_header_"] {{ min-height: 0; }}
 @container dashboard_main (max-width: 760px) {{
   [class*="st-key-page_heading_"] {{ flex-wrap: wrap; gap: .25rem; }}
-  [class*="st-key-page_heading_"] > [data-testid="stLayoutWrapper"]:has(h1) {{
+  .st-key-page_heading_app {{ padding-right: 0; }}
+  /* 좁은 본문에서는 내보내기를 별도 행으로 예약해 제목과도 겹치지 않는다. */
+  .st-key-page_heading_app > [data-testid="stLayoutWrapper"]:has(> .st-key-exports_app) {{ position: static; }}
+  [class*="st-key-page_heading_"] > [data-testid="stLayoutWrapper"]:has(.st-key-app_title_link) {{
     flex: 1 1 100%; order: 1;
   }}
   [class*="st-key-page_heading_"] > [data-testid="stLayoutWrapper"]:has([class*="st-key-exports_"]) {{

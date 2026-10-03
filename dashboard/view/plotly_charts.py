@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import math
 import html
+import re
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from view.charts import CHART_H, PROCUREMENT_TYPES
+from view.charts import CHART_H, PROCUREMENT_TYPES, empty_chart
 
 GRADIENT = [[0, "rgba(0,102,255,0)"], [1, "rgba(0,102,255,0.16)"]]
 CONFIG = {"displayModeBar": False, "scrollZoom": False, "responsive": True}
@@ -93,7 +94,7 @@ def _groups(frame, series, order):
 
 
 def line_figure(frame, x, y, *, x_title="연도", y_title, series=None, order=None,
-                integer=False, percent=False, log=False, ticks=None, height=CHART_H):
+                integer=False, percent=False, log=False, ticks=None, height=CHART_H, annual=False):
     fig = go.Figure()
     colors = _palette()
     maximum = pd.to_numeric(frame[y], errors="coerce").max()
@@ -109,18 +110,47 @@ def line_figure(frame, x, y, *, x_title="연도", y_title, series=None, order=No
     groups = _groups(frame, series, order)
     fill_alpha = 0.16 / max(1, len(groups))  # 겹친 계열도 전체 채움이 탁해지지 않도록 보정
     for name, subset, index in groups:
+        plot_x, plot_y = subset[x].tolist(), subset[y].tolist()
+        if annual and len(subset):
+            years = [_year_number(value) for value in plot_x]
+            if len(set(years)) != len(years):
+                raise ValueError("동일 계열의 연도가 중복됩니다. 집계 기준을 확인하세요.")
+            points = dict(zip(years, plot_y))
+            plot_x = list(range(min(years), max(years) + 1))
+            # 결측 연도는 0이 아니다. 선도 누락 구간을 가로질러 연결하지 않는다.
+            plot_y = [points.get(year) for year in plot_x]
         # fill은 표시층뿐이다. 선·툴팁의 실제 중앙값/평균값은 반올림하지 않는다.
         fig.add_trace(go.Scatter(
-            x=subset[x].tolist(), y=subset[y].tolist(), name=str(name), mode="lines+markers",
+            x=plot_x, y=plot_y, name=str(name), mode="lines+markers", connectgaps=False,
             line=dict(color=colors[index % len(colors)], width=2.5, dash=DASHES[index % len(DASHES)] if series else "solid"),
             marker=dict(size=7), fill="tozeroy",
             fillgradient=dict(type="vertical", start=gradient_start, stop=maximum,
                               colorscale=[[0, GRADIENT[0][1]], [1, f"rgba(0,102,255,{fill_alpha:g})"]]),
             hovertemplate=f"{x_title}: %{{x}}<br>{y_title}: %{{y:{'.1%' if percent else ',.1~f' if integer else ',.2f'}}}<extra>{name}</extra>"))
+    year_axis = _axis(x_title, frame[x], category=True)
+    if annual:
+        numbers = [_year_number(value) for value in frame[x]]
+        year_axis = _axis(x_title)
+        year_axis.pop("rangemode", None)
+        year_axis.update(dtick=1, tickformat="d")
+        if numbers:
+            labels = dict(zip(numbers, frame[x].astype(str)))
+            years = list(range(min(numbers), max(numbers) + 1))
+            year_axis.update(tickmode="array", tickvals=years,
+                             ticktext=[labels.get(year, str(year)) for year in years])
+            if len(years) == 1:
+                year_axis.update(range=[years[0] - .5, years[0] + .5])
     return _layout(fig,
-                   xaxis=_axis(x_title, frame[x], category=True),
+                   xaxis=year_axis,
                    yaxis=_axis(y_title, frame[y], integer=integer, percent=percent, log=log, ticks=ticks),
                    height=height, legend=series is not None)
+
+
+def _year_number(value):
+    match = re.fullmatch(r"((?:19|20)\d{2})(?:\s*\([^)]*\))?", str(value))
+    if not match:
+        raise ValueError("연도 그래프에는 4자리 연도 또는 부분 기간 표시만 사용할 수 있습니다.")
+    return int(match.group(1))
 
 
 def bar_figure(frame, category, value, *, category_title="연도", value_title,
@@ -160,16 +190,29 @@ def bar_figure(frame, category, value, *, category_title="연도", value_title,
                    legend=series is not None if show_legend is None else show_legend)
 
 
-def histogram_figure(values, *, x_title, height=CHART_H):
+def histogram_figure(values, *, x_title, y_title="건수 (건)", height=CHART_H):
     fig = go.Figure(go.Histogram(x=list(values), nbinsx=25, marker_color=_palette()[0],
-                                hovertemplate=f"{x_title}: %{{x}}<br>건수: %{{y:,d}}건<extra></extra>"))
+                                hovertemplate=f"{x_title}: %{{x}}<br>{y_title}: %{{y:,d}}<extra></extra>"))
     # 원본 일수는 그대로 Plotly에 전달한다. 예상 구간 빈도는 정수 눈금 간격에만 사용한다.
     counts, _ = np.histogram(values, bins=25) if len(values) else (np.array([0]), [])
     return _layout(fig, xaxis=_axis(x_title, values, integer=True),
-                   yaxis=_axis("건수 (건)", [counts.max()], integer=True), height=height, legend=False)
+                   yaxis=_axis(y_title, [counts.max()], integer=True), height=height, legend=False)
+
+
+def has_chart_values(fig):
+    """지원 그래프의 수치 축만 검사한다. 범주명 또는 0을 결측으로 취급하지 않는다."""
+    for trace in fig.data:
+        axis = "x" if trace.type == "histogram" or getattr(trace, "orientation", None) == "h" else "y"
+        values = getattr(trace, axis, None)
+        if values is not None and any(value is not None and pd.notna(value) for value in values):
+            return True
+    return False
 
 
 def show(fig, *, key: str):
+    if not has_chart_values(fig):
+        empty_chart(height=fig.layout.height or CHART_H, key=f"empty_{key}")
+        return
     # 문자 색은 모드 전환 즉시 native theme가 보정한다. 격자는 반투명 중성색이다.
     st.plotly_chart(fig, width="stretch", theme="streamlit", key=key, config=CONFIG)
 
@@ -315,6 +358,9 @@ export default function ({data}) {
 """
 
 def show_donut(frame):
+    if frame.empty or pd.to_numeric(frame.notice_count, errors="coerce").fillna(0).sum() <= 0:
+        empty_chart(key="empty_overview_type_donut")
+        return
     fig = donut_figure(frame)
     st.plotly_chart(fig, width="stretch", theme="streamlit", key="overview_type_donut", config=CONFIG)
     row = frame.loc[frame.notice_count.idxmax()]

@@ -1,7 +1,26 @@
 """표 정렬은 페이지 분할 전에 전체 검색 결과에 적용한다."""
 
+from datetime import datetime
+
+import pandas as pd
+
 SORT_FIELDS = {"마감": "bid_close_date", "공고명": "notice_name", "수요기관": "demand_agency_name",
                "유형": "procurement_type", "참여 판단": "status", "면허·지역 요건": "license_values"}
+
+
+def sort_by_deadline(frame: pd.DataFrame, now: datetime) -> pd.DataFrame:
+    """마감 전은 촉박한 순, 마감 후는 최근 마감순, 마감 미확인은 마지막.
+
+    now와 마감일은 같은 시간대의 datetime이어야 한다. 원본 값·열·인덱스는 보존한다.
+    """
+    deadlines = frame["bid_close_date"]
+    upcoming = frame.loc[deadlines >= now].sort_values(
+        ["bid_close_date", "notice_date"], ascending=[True, False], kind="mergesort")
+    expired = frame.loc[deadlines < now].sort_values(
+        ["bid_close_date", "notice_date"], ascending=[False, False], kind="mergesort")
+    unknown = frame.loc[deadlines.isna()].sort_values(
+        "notice_date", ascending=False, kind="mergesort", na_position="last")
+    return pd.concat([upcoming, expired, unknown])
 
 
 def normalize_sort(value):

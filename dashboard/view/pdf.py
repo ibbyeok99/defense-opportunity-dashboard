@@ -209,7 +209,7 @@ class Report:
         self._y -= 0.1
 
     def _draw_chart(self, draw, height: float):
-        self._need(height + 0.2)
+        self._need(height + 0.6)
         bottom = self._y - height
         ax = self._fig.add_axes([(MARGIN + 0.45) / PAGE_W, bottom / PAGE_H, (BODY_W - 0.55) / PAGE_W,
                                  (height - 0.25) / PAGE_H])
@@ -219,4 +219,7 @@ class Report:
             ax.spines[side].set_visible(False)
         if ax.get_legend():
             ax.legend(fontsize=7, frameon=False)
-        self._y = bottom - 0.3
+        # 축 이름·눈금은 axes 밖으로 나온다. 실제 글자 끝 아래에 다음 표를 배치한다.
+        self._fig.canvas.draw()
+        bounds = ax.get_tightbbox(self._fig.canvas.get_renderer()).transformed(self._fig.dpi_scale_trans.inverted())
+        self._y = min(bottom - 0.3, bounds.y0 - 0.16)

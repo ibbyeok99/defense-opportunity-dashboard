@@ -71,7 +71,7 @@ def run_checks() -> pd.DataFrame:
         return pd.DataFrame([
             {"검사 항목": "대시보드 지표 테이블 조회", "통과": meta.get("required_tables_present", False),
              "결과": f"{len(PUBLISHED_TABLES)}개 핵심 테이블"},
-            {"검사 항목": "게시 버전 일관성", "통과": meta.get("version_consistent", False),
+            {"검사 항목": "게시 버전 일관성", "통과": meta.get("version_consistent"),
              "결과": str(meta.get("run_id") or "게시 버전 확인 불가")},
         ])
     return _read("실행점검.csv")
@@ -116,7 +116,8 @@ def category_examples() -> dict[str, str]:
     물품분류번호·공공조달분류코드는 EDA 결과에 **이름이 없고 번호만** 있다. 사용자가 알아보도록
     '예: 공고명'을 붙이는 용도이며 분류의 공식 이름이 아니다(공식 이름표는 EDA 담당에게 요청 중).
     """
-    n = notices()[["item_code", "notice_name"]].dropna()
+    # 예시에는 요건이 필요 없다. 전체 문서 근거 재해석/overlay를 실행하지 않는다.
+    n = _base_notices()[["item_code", "notice_name"]].dropna()
     return n.groupby("item_code")["notice_name"].agg(lambda s: s.value_counts().index[0]).to_dict()
 
 
@@ -226,7 +227,7 @@ def agency_names() -> dict[str, str]:
 
 
 @st.cache_data(ttl=NOTICE_TTL, show_spinner=False)
-def notices() -> pd.DataFrame:
+def _base_notices() -> pd.DataFrame:
     """공고 탐색기용 표(실시간 공고 표를 가정). 한 행 = 공고 1건의 1개 차수."""
     df = _read("mart_notice_eligibility.csv")
     df = _num(df, ["license_count", "region_count"])
@@ -246,6 +247,71 @@ def notices() -> pd.DataFrame:
     return df
 
 
+def notices() -> pd.DataFrame:
+    """공고 원본은 캐시하고 근거 보완은 매 호출 재연결해 조회 직후 반영한다."""
+    from service.requirement_overlay import overlay
+    from service.source import read_requirement_evidence
+    return overlay(_base_notices(), read_requirement_evidence())
+
+
+@st.cache_data(ttl=NOTICE_TTL, show_spinner=False)
+def _stored_notices() -> pd.DataFrame:
+    """목록용 DB 저장 요건만. 근거 사본 읽기·공식 조회·문서 해석을 하지 않는다."""
+    from service.requirement_overlay import usable_values
+    out = _base_notices().copy()
+    for kind in ('license', 'region'):
+        if kind + '_values' not in out:
+            out[kind + '_values'] = ''
+        if kind + '_state' not in out:
+            out[kind + '_state'] = '미확인'
+        values = out[kind + '_values'].map(lambda value: ' | '.join(usable_values(value)))
+        out[kind + '_values'] = values
+        missing = out[kind + '_state'].ne('조건없음') & (out[kind + '_state'].ne('제한있음') | values.eq(''))
+        out.loc[missing, kind + '_state'] = '미확인'
+        out[kind + '_review_status'] = '미조회'
+        out.loc[missing, kind + '_review_status'] = '상세 확인'
+        out[kind + '_requires_review'] = False
+        out[kind + '_evidence_quote'] = ''
+    out['requirement_search_text'] = out.license_values + ' ' + out.region_values
+    out['requirement_evidence'] = pd.Series([None] * len(out), index=out.index, dtype=object)
+    out['requirement_other_summary'] = ''
+    out['requirement_checked_at'] = ''
+    return out
+
+
+def stored_notices() -> pd.DataFrame:
+    """DB와 저장된 공식 API 값만. 원문/첨부 읽기·문서 추출·네트워크 조회는 하지 않는다."""
+    from service.requirement_overlay import overlay
+    from service.source import read_api_requirement_evidence
+    stored = _stored_notices()
+    records = read_api_requirement_evidence()
+    out = overlay(stored, records) if records else stored
+    for kind in ('license', 'region'):
+        missing = out[kind + '_state'].eq('미확인')
+        out.loc[missing, kind + '_review_status'] = '상세 확인'
+    # DB에만 있는 값도 검색 대상이다. 문서 발췌/조건 후보는 목록에 넣지 않는다.
+    out['requirement_search_text'] = out.license_values + ' ' + out.region_values
+    return out
+
+
+def favorite_notices(ids) -> pd.DataFrame:
+    """즐겨찾기 최대10건에만 저장 근거를 연결한다. 전체 공고 보완은 생략한다."""
+    from service.requirement_overlay import overlay
+    from service.source import read_requirement_evidence
+    selected = _stored_notices()
+    selected = selected[selected.notice_id.isin(list(dict.fromkeys(ids))[:10])].drop_duplicates('notice_id')
+    return overlay(selected, read_requirement_evidence()) if len(selected) else selected
+
+
+def _clear_notices():
+    _base_notices.clear()
+    _stored_notices.clear()
+
+
+notices.clear = _clear_notices
+stored_notices.clear = _stored_notices.clear
+
+
 def agency_mask(frame: pd.DataFrame, role: str, selected) -> pd.Series:
     """기관명과 코드로 저장된 기존 검색을 모두 비교한다. 원본 코드는 변경하지 않는다."""
     stem = "demand" if role == "수요기관" else "notice"
@@ -259,7 +325,7 @@ def agency_mask(frame: pd.DataFrame, role: str, selected) -> pd.Series:
 @st.cache_data(ttl=STATS_TTL)
 def license_names() -> list[str]:
     """공고에 나온 면허 이름 목록(회사 보유 면허 입력용). '이름/코드'에서 이름만."""
-    vals = notices()["license_values"].dropna()
+    vals = stored_notices()["license_values"].dropna()
     names = {v.strip().rsplit("/", 1)[0].strip() for s in vals for v in s.split("|") if v.strip()}
     return sorted(n for n in names if n)  # '/코드'처럼 이름이 빈 값은 뺀다(빈 선택지로 보임)
 
@@ -267,7 +333,7 @@ def license_names() -> list[str]:
 @st.cache_data(ttl=STATS_TTL)
 def provinces() -> list[str]:
     """시·도 목록(회사 소재지 입력용). 허용 지역 값 중 시·군이 붙지 않은 것."""
-    vals = notices()["region_values"].dropna()
+    vals = stored_notices()["region_values"].dropna()
     names = {v.strip() for s in vals for v in s.split("|") if v.strip() and " " not in v.strip()}
     return sorted(names)
 

@@ -1,6 +1,7 @@
 """공고 비교 표시: 공고 자체 조건과 분류 과거 지표를 구분하며, 누락 값을 0으로 바꾸지 않는다."""
 
 import pandas as pd
+from view.copy import condition_text
 import streamlit as st
 
 from view.fmt import notice_identifier, notice_status_label, num, pct, region_display, dday_text
@@ -14,6 +15,9 @@ def compare_notices(details: list[dict]) -> pd.DataFrame:
     columns = {}
     for i, det in enumerate(details, 1):
         n = det["notice"]
+        saved = det.get('saved_details', {})
+        prices, schedule = saved.get('price', {}), saved.get('schedule', {})
+        participation = saved.get('participation', {})
         def date_value(key):
             value = n.get(key)
             return pd.Timestamp(value).strftime("%Y-%m-%d %H:%M") if pd.notna(value) else "미확인"
@@ -22,11 +26,14 @@ def compare_notices(details: list[dict]) -> pd.DataFrame:
             "조달 유형": n["procurement_type"], "분류": det["category"],
             "수요기관": n["demand_agency_name"], "공고기관": n["notice_agency_name"],
             "공고일": date_value("notice_date"), "마감": date_value("bid_close_date"),
-            "금액 확인": "원문에서 배정예산·추정가격 확인 (비교 화면 미연결)",
+            "배정예산": prices.get('배정예산', '미제공'),
+            "추정가격": prices.get('추정가격', '미제공'),
+            "입찰참가자격 등록 마감": schedule.get('입찰참가자격 등록 마감', '미제공'),
+            "공동수급 방식": participation.get('공동수급 방식', '미제공'),
             "내 회사 조건 비교": notice_status_label(det["status"]),
         }
         for _, condition in det["conditions"].iterrows():
-            required = condition["요구 조건"]
+            required = condition_text(condition["요구 조건"])
             if condition["구분"] == "지역":
                 required = ", ".join(region_display(p) for p in required.split(", "))
             entries[f"{condition['구분']} 요구 조건"] = required
@@ -45,7 +52,8 @@ def compare_notices(details: list[dict]) -> pd.DataFrame:
 def comparison_sections(details):
     """같은 원본 비교 결과를 업무 요건·기본 정보·분류 참고로 분리한다."""
     frame = compare_notices(details)
-    key_rows = [r for r in frame.index if r in ("마감", "내 회사 조건 비교") or r.endswith("요구 조건")]
+    key_rows = [r for r in frame.index if r in ("마감", "내 회사 조건 비교", '배정예산', '추정가격',
+                                               '입찰참가자격 등록 마감', '공동수급 방식') or r.endswith("요구 조건")]
     reference_rows = [r for r in frame.index if r.startswith("과거 ") or "(분류)" in r]
     basics = [r for r in frame.index if r not in key_rows + reference_rows]
     return frame.loc[key_rows].copy(), frame.loc[basics].copy(), frame.loc[reference_rows].copy()
@@ -61,7 +69,7 @@ def render_comparison(details, today, *, on_detail=None):
         st.info("비교 가능한 공고를 2개 이상 선택하세요.")
         return
     key, basics, reference = comparison_sections(details)
-    st.caption("마감과 요구 조건을 대조해 먼저 검토할 공고를 고르세요. 공고 순서는 선택 순서이며 추천 순위가 아닙니다.")
+    st.caption("마감·저장 금액·요구 조건을 대조해 먼저 검토할 공고를 고르세요. 공고 순서는 선택 순서이며 추천 순위가 아닙니다. 미제공 금액을 0원으로 해석하지 마세요.")
     for i, (col, detail) in enumerate(zip(st.columns(len(details)), details), 1):
         n = detail["notice"]
         deadline = n.get("bid_close_date")

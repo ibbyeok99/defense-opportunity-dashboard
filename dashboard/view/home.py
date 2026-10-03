@@ -40,15 +40,15 @@ body:has(.st-key-home_screen) [data-testid="stMainBlockContainer"] {
                                 rgba(255,255,255,.08) 61%, rgba(255,255,255,0) 80%);
 }
 .st-key-home_content {
-    position: absolute; top: clamp(112px, 19.4vh, 210px);
+    position: absolute; top: clamp(64px, 15.1vh, 170px);
     left: max(clamp(24px, 7.3vw, 140px), env(safe-area-inset-left));
     right: max(clamp(24px, 7.3vw, 140px), env(safe-area-inset-right));
     width: auto !important; max-width: 800px; z-index: 1; gap: 0;
 }
 .st-key-home_logo {
     position: relative; overflow: hidden; display: block; flex: 0 0 auto;
-    width: clamp(280px, 34.3vw, 575px) !important; max-width: 100%;
-    aspect-ratio: var(--home-logo-aspect, 4.46); margin-bottom: clamp(26px, 4.4vh, 42px);
+    width: clamp(190px, 15.4vw, 290px) !important; max-width: 100%;
+    aspect-ratio: var(--home-logo-aspect, 4.46); margin-bottom: clamp(26px, 4.6vh, 40px);
     animation: frontline-fade-up .8s ease-out both;
 }
 .st-key-home_logo [data-testid="stImage"] {
@@ -61,34 +61,34 @@ body:has(.st-key-home_screen) [data-testid="stMainBlockContainer"] {
 .st-key-home_logo [data-testid="stElementToolbar"] { display: none; }
 .frontline-home-copy { color: #070E1C; }
 .frontline-home-copy::before {
-    content: ""; display: block; width: 42px; height: 2px; background: #D3DCE6;
+    content: ""; display: block; width: 42px; height: 2px; background: #DCE8F5;
     margin-bottom: 25px;
 }
 .frontline-home-copy h1 {
-    color: #070E1C !important; margin: 0 0 14px; padding: 0;
-    font-size: clamp(34px, 3.8vw, 64px); font-weight: 700;
-    line-height: 1.25; letter-spacing: -.035em; word-break: keep-all; text-wrap: balance;
+    color: #071A3B !important; margin: 0 0 16px; padding: 0;
+    font-size: clamp(42px, 4.5vw, 82px); font-weight: 700;
+    line-height: 1.16; letter-spacing: -.035em; word-break: keep-all;
     animation: frontline-fade-up .8s ease-out .12s both;
 }
 .frontline-home-brand-fallback {
     font-size: clamp(38px, 5vw, 72px); font-weight: 800; margin: 0 0 36px;
 }
 .frontline-home-description {
-    margin: 0; color: #405571; font-size: clamp(20px, 2.05vw, 35px);
+    margin: 0; color: #405571; font-size: clamp(20px, 1.8vw, 33px);
     line-height: 1.45; word-break: keep-all;
     animation: frontline-fade-up .8s ease-out .24s both;
 }
 .st-key-home_enter { animation: frontline-fade-up .8s ease-out .36s both; }
 .st-key-home_enter button {
-    color: #fff !important; background: #172B4D !important;
-    border: 1px solid #172B4D !important; border-radius: 8px !important;
-    min-height: 80px; min-width: clamp(240px, 18.4vw, 310px);
-    padding: 18px 36px !important; margin-top: 34px;
+    color: #fff !important; background: #005BFF !important;
+    border: 1px solid #005BFF !important; border-radius: 8px !important;
+    min-height: clamp(58px, 8.9vh, 77px); min-width: clamp(240px, 16.2vw, 310px);
+    padding: 16px 32px !important; margin-top: 30px;
     font-weight: 600; box-shadow: 0 5px 12px #102C5026;
     transition: background-color .2s ease, border-color .2s ease;
 }
 .st-key-home_enter button:hover {
-    background: #253E63 !important; border-color: #253E63 !important;
+    background: #0047CC !important; border-color: #0047CC !important;
 }
 .st-key-home_enter button:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
 .st-key-home_enter button p { color: inherit !important; font-size: clamp(18px, 1.45vw, 24px) !important; font-weight: 600; }
@@ -97,8 +97,8 @@ body:has(.st-key-home_screen) [data-testid="stMainBlockContainer"] {
     to { opacity: 1; transform: translateY(0); }
 }
 @media (max-width: 600px) {
-    .st-key-home_content { top: max(120px, 20vh); }
-    .st-key-home_logo { width: min(100%, 340px) !important; margin-bottom: 28px; }
+    .st-key-home_content { top: max(56px, 12vh); }
+    .st-key-home_logo { width: min(60%, 220px) !important; margin-bottom: 28px; }
     .frontline-home-copy h1 { font-size: clamp(32px, 8.3vw, 42px); }
     .frontline-home-description { font-size: clamp(20px, 5.1vw, 25px); }
     .st-key-home_enter button { min-height: 58px; padding: 14px 24px !important; margin-top: 26px; }
@@ -107,8 +107,8 @@ body:has(.st-key-home_screen) [data-testid="stMainBlockContainer"] {
     }
 }
 @media (max-height: 600px) {
-    .st-key-home_content { top: 82px; padding-bottom: 28px; }
-    .st-key-home_logo { width: clamp(220px, 28vw, 350px) !important; margin-bottom: 20px; }
+    .st-key-home_content { top: 32px; padding-bottom: 28px; }
+    .st-key-home_logo { width: clamp(170px, 15.4vw, 250px) !important; margin-bottom: 16px; }
     .frontline-home-copy::before { margin-bottom: 16px; }
     .frontline-home-copy h1 { font-size: clamp(30px, 3.6vw, 44px); }
     .frontline-home-description { font-size: 22px; }
@@ -144,6 +144,6 @@ def apply_home_style():
 
 def home_copy() -> str:
     return """<section class="frontline-home-copy" aria-label="FRONTLINE DATA 소개">
-    <h1>국방의 오늘, 기회의 내일</h1>
+    <h1>국방의 오늘,<br>기회의 내일</h1>
     <p class="frontline-home-description">데이터로 보는 국방 조달 시장</p>
     </section>"""

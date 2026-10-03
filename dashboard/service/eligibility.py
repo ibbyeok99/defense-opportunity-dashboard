@@ -88,4 +88,9 @@ def overall(lic: Verdict, reg: Verdict) -> str:
 def judge(row, my_region: str | list[str] | tuple[str, ...] | None, my_licenses: list[str]) -> tuple[str, Verdict, Verdict]:
     lic = judge_license(row["license_state"], row["license_values"], my_licenses)
     reg = judge_region(row["region_state"], row["region_values"], my_region)
+    # 문서 후보·상충 근거는 확인된 것처럼 회사의 충족/불가 판정에 쓰지 않는다.
+    if row.get("license_requires_review", False):
+        lic = Verdict(CHECK, "면허 근거 확인 — 문장 전체·예외 원문 검토 필요")
+    if row.get("region_requires_review", False):
+        reg = Verdict(CHECK, "지역 근거 확인 — 문장 전체·예외 원문 검토 필요")
     return overall(lic, reg), lic, reg

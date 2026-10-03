@@ -72,7 +72,7 @@ def header_background_url() -> str | None:
 def sidebar_brand():
     """원본 흰색 로고를 native 이미지로 표시하고 투명 여백만 화면에서 숨긴다."""
     import streamlit as st
-    path = ICON_DIRECTORY / "logo_white.png"
+    path = ICON_DIRECTORY / "logo_white_sb.png"
     if not path.is_file():
         return
     with Image.open(path) as image:
@@ -99,12 +99,19 @@ def procurement_icon_path(procurement_type: str) -> Path | None:
     return path if path.is_file() else None
 
 
-def procurement_icon_html(procurement_type: str) -> str | None:
-    """native image에는 alt/title 지정 API가 없어 이름·hover 설명만 작은 HTML로 제공한다."""
+def procurement_icon_html(procurement_type: str, *, with_tooltip: bool = False) -> str | None:
+    """유형 이름·hover 설명만 HTML로 제공한다. with_tooltip은 즉시 표시·키보드 포커스를 지원한다."""
     path = procurement_icon_path(procurement_type)
     if path is None:
         return None
     label = escape(procurement_type, quote=True)
     encoded = _encoded_icon(path.name, path.stat().st_mtime_ns)
+    if with_tooltip:
+        tip_id = f"procurement-type-{path.stem}"
+        return (f'<span class="procurement-type-hover" tabindex="0" role="img" '
+                f'aria-label="조달 유형: {label}" aria-describedby="{tip_id}">'
+                f'<img src="data:image/png;base64,{encoded}" width="40" height="40" '
+                'alt="" style="display:block" />'
+                f'<span class="procurement-type-tooltip" id="{tip_id}" role="tooltip">{label}</span></span>')
     return (f'<img src="data:image/png;base64,{encoded}" width="40" height="40" '
             f'alt="{label}" title="조달 유형: {label}" style="display:block" />')

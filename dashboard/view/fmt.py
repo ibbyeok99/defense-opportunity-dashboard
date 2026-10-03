@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import pandas as pd
+from view.copy import review_label
 
 # 참여 판단 배지 색 — service.eligibility.STATUS_OPTIONS와 같은 순서(가능·원문 확인·불가·미입력)
 STATUS_COLORS = ["green", "orange", "red", "gray"]
@@ -13,6 +14,13 @@ def dday_text(d) -> str:
     if d is None or pd.isna(d):
         return "–"
     return "마감됨" if d < 0 else ("D-day" if d == 0 else f"D-{int(d)}")
+
+
+def deadline_tone(d) -> str:
+    """마감 상태의 공통 표시색. 날짜·정렬·참여 판단은 변경하지 않는다."""
+    if d is None or pd.isna(d) or d < 0:
+        return 'gray'
+    return 'red' if d <= 7 else 'blue'
 
 CONTRACT_AMOUNT_MESSAGES = {
     "no_linked_contracts": "해당 공고와 연결된 계약정보가 없습니다.",
@@ -49,14 +57,19 @@ def compact_filter_values(values, *, limit: int = 3, separator: str = ", ", empt
     return summary
 
 
-def notice_requirement_summary(license_state, license_values, region_state, region_values) -> str:
+def notice_requirement_summary(license_state, license_values, region_state, region_values, *, license_review="미조회", region_review="미조회") -> str:
     """공고 목록용 면허·지역 요건. '미확인'을 '제한 없음'으로 축약하지 않는다."""
 
-    def dimension(label, state, value, *, is_region=False):
+    def dimension(label, state, value, review, *, is_region=False):
+        if review in {"공식 업종 제한 없음", "문서상 업종 제한 없음"}:
+            return f"{label}·업종: 업종 제한 없음 · 기타 자격 원문 검토"
         if state == "조건없음":
-            return f"{label} 제한 없음"
+            return f"{label} {'문서상 ' if review == '문서상 제한 없음' else ''}제한 없음" + (" · 원문 검토" if review == "문서상 제한 없음" else "")
         if state != "제한있음":
-            return f"{label} 미확인"
+            if review == "문서 요건 후보·원문 검토" and isinstance(value, str) and value.strip():
+                candidates = [v.strip() for v in value.split("|") if v.strip()]
+                return f"{label} 문서 후보: {' · '.join(candidates[:2])}" + (f" 외 {len(candidates)-2}개" if len(candidates) > 2 else "") + " · 원문 검토"
+            return f"{label} {review_label(review) if review != '미조회' else '미확인'}"
 
         values = [part.strip() for part in value.split("|") if part.strip()] if isinstance(value, str) else []
         if not values:
@@ -66,19 +79,21 @@ def notice_requirement_summary(license_state, license_values, region_state, regi
         visible = " · ".join(values[:2])
         if len(values) > 2:
             visible += f" 외 {len(values) - 2}개"
-        return f"{label} 제한: {visible}"
+        return f"{label} 제한: {visible}" + (" · 문서 원문 검토" if review == "문서 지역 조건 확인·원문 검토" else "")
 
-    return " | ".join((dimension("면허", license_state, license_values),
-                       dimension("지역", region_state, region_values, is_region=True)))
+    parts = (dimension("면허", license_state, license_values, license_review),
+             dimension("지역", region_state, region_values, region_review, is_region=True))
+    # 두 표시가 같은 상세 확인일 때만 합친다. 확인된 값·다른 검토 상태는 보존한다.
+    return "상세 확인" if parts == ("면허 상세 확인", "지역 상세 확인") else " | ".join(parts)
 
 # EDA 인계 명세 4절: 화면 문구의 핵심(바꾸지 말 것)
 CAVEATS = {
     "competition": "해당 조달유형·분류에서 관측된 과거 입찰·낙찰 결과입니다. 낙찰 가능성 예측이 아닙니다.",
-    "contract_amount": "수집 시점에 관측되고 분석 규칙을 통과한 계약의 금차금액 합계입니다. 전체 시장규모가 아닙니다.",
+    "contract_amount": "수집 시점에 확인되고 분석 규칙을 통과한 계약의 이번 반영 금액 합계입니다. 전체 시장규모가 아닙니다.",
     "new_supplier": "이 데이터에서 처음 확인된 업체라는 뜻입니다. 새로 창업했거나 처음 입찰한 기업이라는 뜻이 아닙니다.",
     "followup": "처음 개찰보다 나중에 확인된 재입찰·재공고 비율입니다. 유찰 확률이나 미래 위험 확률이 아닙니다.",
-    "unknown_condition": "면허·지역 '미확인'은 조건이 없다는 뜻이 아닙니다. 공고 원문에서 확인하세요.",
-    "partial_year": "2026년은 일부 기간만 들어 있습니다. 연도 비교는 같은 기간(1월 1일~9월 중순) 값을 쓰세요.",
+    "unknown_condition": "면허·지역 ‘미확인’은 조건이 없다는 뜻이 아닙니다. 공고 원문에서 확인해야 합니다.",
+    "partial_year": "일부 기간만 수집된 연도는 전체 연도와 직접 비교할 수 없습니다. 연도 비교에는 같은 날짜 범위의 값을 사용해야 합니다.",
     "no_score": "이 화면은 판단에 필요한 사실만 모아 보여 줍니다. 진입 가능성을 점수로 매기지 않습니다.",
 }
 
@@ -152,6 +167,30 @@ def num(v, digits: int = 0) -> str:
 
 def delta_pct(v) -> str | None:
     return None if is_missing(v) else f"{v * 100:+.1f}%"
+
+
+def kpi_sample_context(current, previous, *, year: int, basis: str) -> dict:
+    """계약 건수의 표시만 정한다. 5건 이하/30건 미만은 운영상 표시 기준이다."""
+    def count(value):
+        if value is None or pd.isna(value):
+            return None
+        try:
+            number = float(value)
+            return int(number) if math.isfinite(number) and number >= 0 and number.is_integer() else None
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    current, previous = count(current), count(previous)
+    if current is None:
+        badge, color = None, 'gray'
+        caption = f'{year}년 · 기준 건수 확인 불가'
+    else:
+        badge = '집계 대상 없음' if current == 0 else '표본 매우 적음' if current <= 5 else '표본 제한적' if current < 30 else None
+        color = 'orange' if current and current <= 5 else 'gray'
+        caption = f'{year}년 · {basis} {current:,}건 기준'
+    show_delta = current is not None and previous is not None and min(current, previous) > 5
+    return {'sample_badge': badge, 'sample_badge_color': color, 'sample_caption': caption,
+            'show_delta': show_delta}
 
 
 def year_delta(current, previous, unit: str) -> str:

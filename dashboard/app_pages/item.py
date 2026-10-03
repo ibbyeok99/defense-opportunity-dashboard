@@ -10,9 +10,9 @@ import streamlit as st
 
 from service import data, metrics, queries
 from service.filters import YEAR_RANGE, ItemFilter
-from view.charts import ITEM_CHART_H, card, kpi_tiles
+from view.charts import ITEM_CHART_H, card, kpi_tiles, empty_chart
 from view.plotly_charts import bar_figure, histogram_figure, line_figure, show
-from view.fmt import CONTRACT_AMOUNT_MESSAGES, num, pct, year_delta, region_display
+from view.fmt import CONTRACT_AMOUNT_MESSAGES, num, pct, year_delta, region_display, kpi_sample_context
 from view.pdf import Report
 from view.navigation import page_header
 from view.reference_table import reference_table
@@ -35,7 +35,7 @@ default_category = item_categories.loc[item_categories["procurement_type"].eq("�
                                       & item_categories["category_value"].eq("23261507")]
 default_item = default_category.iloc[0]["item_code"] if len(default_category) == 1 else None
 if default_item is None:
-    st.warning("기본 분류 ‘3차원프린터 (23261507)’를 현재 자료에서 유일하게 확인할 수 없습니다. 현재 목록의 대표 분류를 표시합니다.")
+    st.warning("기본 분류 ‘3차원프린터 (23261507)’를 불러올 수 없습니다. 선택된 분류를 유지하며, 선택값이 없으면 선택한 유형에서 개찰이 가장 많은 분류를 표시합니다.")
 IT_DEFAULTS = {"it_type": "물품", "it_item": default_item, "sel_item": default_item,
                "it_years": YEAR_RANGE, "it_agency_role": "수요기관", "it_agency_수요기관": [], "it_agency_공고기관": [],
                "it_amount": []}
@@ -83,7 +83,7 @@ def _go_open_notices():
 
 with st.container(key="item_context", gap="xsmall"):
     st.space(8)
-    type_icon = procurement_icon_html(ptype)
+    type_icon = procurement_icon_html(ptype, with_tooltip=True)
     with st.container(horizontal=True, gap="xsmall", vertical_alignment="center",
                       width="content", wrap=False, key="item_category_heading"):
         if type_icon:
@@ -102,7 +102,7 @@ with st.container(key="item_context", gap="xsmall"):
                 if level and level != "표본 적음":
                     with st.popover(f"경쟁 {level} · {int(res['level_year'])}년 분류 전체 기준", icon=":material/info:", type="tertiary", key="it_competition_criteria"):
                         st.caption("선택한 분석 기간·기관·낙찰금액 조건으로 다시 평가한 등급이 아닙니다. 분류 전체의 최근 연도 기준입니다.")
-                        st.caption("경쟁 수준: 같은 조달 유형의 분류별 최근 연도 참가업체 중앙값 순위를 낮음·보통·높음으로 3등분한 상대 비교입니다. 동률은 원본 분류 순서로 나누며, 절대 진입 난이도가 아닙니다.")
+                        st.caption("경쟁 수준은 같은 조달 유형의 분류를 참가업체 수 중앙값 순으로 세 그룹(낮음·보통·높음)으로 나눈 상대 비교입니다. 동률은 원본 분류 순서로 구분하며 진입 난이도나 낙찰 가능성을 뜻하지 않습니다.")
                 if filtered:
                     st.markdown(":blue-badge[선택 조건 적용]")
             kpi_basis_slot = st.empty()
@@ -134,8 +134,12 @@ kpi_items = [
     {"label": kpis[1][0], "value": kpis[1][1], "color": "orange", "delta": year_delta(kcur['single_bid_rate'], kprev['single_bid_rate'], '%p'), "help": "참여가 있었던 개찰 중 업체가 1곳뿐인 비율"},
     {"label": kpis[2][0], "value": kpis[2][1], "color": "violet",
      "delta": year_delta(kcur['top3'], kprev['top3'], '%p'), "help": "기준 연도 낙찰 건수 기준. 기관·금액 필터 적용 시 계산하지 않습니다."},
-    {"label": kpis[3][0], "value": kpis[3][1], "color": "green", "delta": year_delta(kcur['contract_count'], kprev['contract_count'], '건'), "help": "계약일 기준 계약 수. 기관·금액 상세 필터 적용 시 비교 불가로 표시하지 않습니다."},
+    {"label": kpis[3][0], "value": kpis[3][1], "color": "green", "delta": year_delta(kcur['contract_count'], kprev['contract_count'], '건'),
+     "help": "계약일 기준 계약 수. 기관·금액 상세 필터 적용 시 비교 불가로 표시하지 않습니다.\n\n비교하는 두 연도 중 한쪽이라도 계약 건수가 5건 이하이면 전년 대비 증감을 생략합니다. 기준 건수가 확인되지 않은 경우에도 증감을 표시하지 않습니다."},
 ]
+# 사용자 결정(2026-10-03): 표본 안내·증감 숨김은 계약 건수에만 적용한다.
+kpi_items[3].update(kpi_sample_context(kcur['contract_count'], kprev['contract_count'],
+                                     year=kyear, basis='관측 계약'))
 if no_previous_year:
     for item in kpi_items:
         item.update(delta=None, delta_description=None, note=":gray[전년 비교 자료 없음]")
@@ -176,41 +180,51 @@ with tab_market:  # 그래프 4개를 2×2로(사용자 지시 2026-09-29). 같�
     row1, row2 = st.columns(2), st.columns(2)
     market_amount = st.session_state.get("it_market_measure") == "계약 금액"
     market_title = "해마다 계약금액은 얼마였나요?" if market_amount else "해마다 개찰이 몇 번 있었나요?"
-    market_note = "개찰에 연결된 계약금액의 연도별 합계입니다." if market_amount else "개찰 수가 많을수록 기회가 자주 나옵니다."
+    contract_calendar = data.SOURCE in {"mysql", "api"}
+    market_note = ("계약일 기준 연도별 계약금액 합계입니다." if contract_calendar else "개찰 연도별로 연결된 계약금액의 합계입니다.") if market_amount else "개찰 수가 많을수록 기회가 자주 나옵니다."
     with row1[0], card(market_title, market_note):
         measure = st.segmented_control("시장 지표", ["개찰 건수", "계약 금액"], default="개찰 건수", required=True, key="it_market_measure", label_visibility="collapsed")
         field, unit = ("events", "개찰 수 (건)") if measure == "개찰 건수" else ("contract_eok", "계약금액 (억원)")
-        amount_state = metrics.contract_amount_availability(yearly) if measure == "계약 금액" else "available"
+        amount_base = res["contract_year"] if contract_calendar else yearly
+        amount_state = metrics.contract_amount_availability(amount_base) if measure == "계약 금액" else "available"
         if measure == "계약 금액" and res["detail_filter"]:
             st.info("기관·낙찰금액 상세 필터는 계약일 기준 계약 집계에 적용되지 않아 금액을 표시하지 않습니다.",
                     icon=":material/info:")
         elif amount_state == "no_linked_contracts":
             st.info(CONTRACT_AMOUNT_MESSAGES[amount_state], icon=":material/info:")
+            empty_chart(height=ITEM_CHART_H, key="empty_it_amount_chart")
         elif ptype == "외자" and measure == "계약 금액":
             st.caption("외자 계약은 통화별로 확인해야 합니다. 원화 합계에 포함하지 않습니다.")
         elif amount_state != "available":
             st.info(CONTRACT_AMOUNT_MESSAGES[amount_state], icon=":material/info:")
+            empty_chart(height=ITEM_CHART_H, key="empty_it_amount_chart")
         else:
-            chart_yearly = yearly.assign(contract_eok=yearly["contract_amount"] / 1e8)
+            chart_yearly = (res["contract_year"].assign(연도=lambda d: d["year"].astype(str))
+                            if measure == "계약 금액" and contract_calendar else yearly)
+            chart_yearly = chart_yearly.assign(contract_eok=chart_yearly["contract_amount"] / 1e8)
             show(bar_figure(chart_yearly, "연도", field, value_title=unit,
+                            category_title="계약 연도" if measure == "계약 금액" and contract_calendar else "개찰 연도",
                             integer=measure == "개찰 건수", height=ITEM_CHART_H), key="it_events_chart")
     with row1[1], card("개찰 한 번에 몇 곳이 참여하나요?", "개찰 1건당 참가업체 수. 많을수록 경쟁이 치열합니다."):
         center = st.segmented_control("참가업체 집계", ["중앙값", "평균값"], default="중앙값", required=True, key="it_bidder_measure", label_visibility="collapsed")
         bidder_field = "median_bidders" if center == "중앙값" else "mean_bidders"
         show(line_figure(yearly, "연도", bidder_field, y_title=f"참가업체 수 ({center}, 곳)",
-                         integer=True, height=ITEM_CHART_H), key="it_bidders_chart")
+                         x_title="개찰 연도", annual=True, integer=True, height=ITEM_CHART_H), key="it_bidders_chart")
     # 같은 세로 거리에는 같은 비율 차이가 대응하도록 0 기준 선형 축을 사용한다.
-    with row2[0], card("단독입찰·재입찰·무응찰 비율은?", "개찰 가운데 각 경우가 차지한 비율입니다."):
+    with row2[0], card("단독입찰·재입찰·무응찰 비율은?", "단독입찰은 참여가 있었던 개찰 기준, 재입찰·무응찰은 전체 개찰 기준입니다. 비율의 합계는 100%가 아닙니다."):
         show(line_figure(long, "연도", "비율", y_title="비율 (%)", series="지표",
+                         x_title="개찰 연도", annual=True,
                          order=["단독입찰", "재입찰", "무응찰"], percent=True, height=ITEM_CHART_H), key="it_rates_chart")
     with row2[1], card("공고부터 계약까지 며칠 걸리나요?",
-              f"중앙값 {days.median():.0f}일 · 계약이 연결된 {len(days):,}건" if len(days) else "표시할 항목이 없습니다."):
+              f"중앙값 {days.median():.0f}일 · 계약이 연결된 {len(days):,}건" if len(days) else ""):
         if len(days):
             threshold = days.quantile(0.98)
             tail_count = int((days > threshold).sum())
             help_label("분포 표시 기준", f"긴 기간에 축이 과도하게 늘어나지 않도록 {threshold:.1f}일을 넘는 {tail_count:,}건을 경계 구간에 모아 표시합니다. 상위 약 2%의 표시용 처리이며, 위 중앙값은 원본 일수로 계산합니다.", key="help_it_days_distribution")
             clipped = pd.DataFrame({"days": days.clip(upper=threshold)})
-            show(histogram_figure(clipped["days"], x_title="공고부터 첫 계약까지 (일)", height=ITEM_CHART_H), key="it_days_chart")
+            show(histogram_figure(clipped["days"], x_title="공고부터 첫 계약까지 (일)", y_title="계약이 연결된 개찰 수 (건)", height=ITEM_CHART_H), key="it_days_chart")
+        else:
+            empty_chart(height=ITEM_CHART_H, key="empty_it_days_chart")
 
 with tab_entry:
     entry_summary(checks, level=level, level_year=res["level_year"])
@@ -219,19 +233,19 @@ with tab_entry:
     entry_height = max(220, 48 * max(len(licenses), len(region_tbl)) + 56)
     with entry_cols[0], card("어떤 면허를 요구하나요?", "면허 제한이 있는 공고에서 자주 나온 면허 (상위 10)"):
         if len(licenses):
-            show(bar_figure(licenses, "조건", "공고 수", category_title=None, value_title="공고 수 (건)",
+            show(bar_figure(licenses, "조건", "공고 수", category_title="면허 조건", value_title="공고 수 (건)",
                             horizontal=True, sort_desc=True, integer=True, height=entry_height,
                             wrap_labels=True), key="it_license_chart")
             st.caption("등장 빈도 순입니다. 복수 면허의 필수·대체 관계는 공고 원문에서 확인하세요.")
         else:
-            st.markdown("표시할 항목이 없습니다.")
+            empty_chart(height=entry_height, key="empty_it_license_chart")
     with entry_cols[1], card("어느 지역 업체만 받나요?", "지역 제한이 있는 공고에서 자주 허용된 지역 (상위 10)"):
         if len(region_tbl):
             display_regions = region_tbl.assign(표시지역=region_tbl["조건"].map(region_display))
-            show(bar_figure(display_regions, "표시지역", "공고 수", category_title=None, value_title="공고 수 (건)",
+            show(bar_figure(display_regions, "표시지역", "공고 수", category_title="허용 지역", value_title="공고 수 (건)",
                             horizontal=True, sort_desc=True, integer=True, height=entry_height), key="it_region_chart")
         else:
-            st.markdown("표시할 항목이 없습니다.")
+            empty_chart(height=entry_height, key="empty_it_region_chart")
 
 with tab_sup:
     st.markdown(f"#### 누가 낙찰받았나요? ({years[0]}~{years[1]}년 합계, 낙찰 건수 상위 15)")
@@ -246,7 +260,7 @@ with tab_sup:
 
 
 def build_pdf() -> bytes:
-    rep = Report(f"품목 분석: {cat['display']}", f"{ptype} · {years[0]}~{years[1]}년 · 개찰 {len(ev):,}건",
+    rep = Report(f"분야별 입찰 분석: {cat['display']}", f"{ptype} · {years[0]}~{years[1]}년 · 개찰 {len(ev):,}건",
                  footer="Frontline Data · 국방 조달 탐색")
     rep.kv(kpis)
     rep.para(kpi_basis)
@@ -254,14 +268,17 @@ def build_pdf() -> bytes:
     def draw(ax):
         ax.bar(yearly["year"], yearly["events"], color="#2563EB")
         ax.set_title("해마다 개찰이 몇 번 있었나요?", fontsize=10)
-        ax.set_xlabel("연도", fontsize=8)
+        ax.set_xlabel("개찰 연도", fontsize=8)
         ax.set_ylabel("개찰 수 (건)", fontsize=8)
 
     rep.heading("연도별 개찰").chart(draw)
     t = yearly[["year", "events", "median_bidders", "single_bid_rate", "no_bid_rate", "contract_count"]].copy()
+    t["year"] = t["year"].astype(str)
     t["single_bid_rate"] = t["single_bid_rate"].map(pct)
     t["no_bid_rate"] = t["no_bid_rate"].map(pct)
     t.columns = ["연도", "개찰(건)", "참가업체(곳, 중앙값)", "단독입찰", "무응찰", "계약(건)"]
+    rep.para("개찰 지표는 개찰 연도 기준입니다. 계약 건수는 계약 연도 기준입니다." if data.SOURCE in {"mysql", "api"}
+             else "개찰 연도 기준이며 계약 건수는 해당 개찰에 연결된 계약입니다.", size=8)
     rep.table(t)
     rep.heading("진입 조건").table(checks[["확인 항목", "관측값", "기준"]])
     if len(licenses):
@@ -276,4 +293,4 @@ def build_pdf() -> bytes:
 
 
 with export_slot:
-    pdf_button("PDF", f"품목분석_{safe_name(cat['category_value'])}.pdf", build_pdf, key="it_pdf", type="tertiary", help="PDF 내보내기")
+    pdf_button("PDF", f"분야별입찰분석_{safe_name(cat['category_value'])}.pdf", build_pdf, key="it_pdf", type="tertiary", help="PDF 내보내기")
