@@ -86,6 +86,26 @@ def notice_requirement_summary(license_state, license_values, region_state, regi
     # 두 표시가 같은 상세 확인일 때만 합친다. 확인된 값·다른 검토 상태는 보존한다.
     return "상세 확인" if parts == ("면허 상세 확인", "지역 상세 확인") else " | ".join(parts)
 
+
+def registered_requirement_summary(license_state, license_values, region_state, region_values, *,
+                                   license_requires_review=False, region_requires_review=False) -> str:
+    """일반 목록의 등록 조건만 표시. 미확인/문서 검토 값은 공란이며 상세·즐겨찾기에는 적용하지 않는다."""
+    parts = []
+    missing = {'', '-', '–', '미확인', 'UNKNOWN', 'NAN', 'NONE', 'NULL', '<NA>', '공고서참조', '공고문참조', '정보없음'}
+    for label, state, raw, manual in (("면허", license_state, license_values, license_requires_review),
+                                      ("지역", region_state, region_values, region_requires_review)):
+        if not isinstance(state, str) or manual is pd.NA or manual:
+            continue
+        if state == '조건없음':
+            parts.append(f'{label} 제한 없음')
+        elif state == '제한있음' and isinstance(raw, str):
+            values = [v.strip() for v in raw.split('|') if ''.join(v.split()).upper() not in missing]
+            if values:
+                shown = [region_display(v) for v in values] if label == '지역' else values
+                text = ' · '.join(shown[:2]) + (f' 외 {len(shown)-2}개' if len(shown) > 2 else '')
+                parts.append(f'{label} 제한: {text}')
+    return ' | '.join(parts)
+
 # EDA 인계 명세 4절: 화면 문구의 핵심(바꾸지 말 것)
 CAVEATS = {
     "competition": "해당 조달유형·분류에서 관측된 과거 입찰·낙찰 결과입니다. 낙찰 가능성 예측이 아닙니다.",

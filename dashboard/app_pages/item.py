@@ -15,6 +15,7 @@ from view.plotly_charts import bar_figure, histogram_figure, line_figure, show
 from view.fmt import CONTRACT_AMOUNT_MESSAGES, num, pct, year_delta, region_display, kpi_sample_context
 from view.pdf import Report
 from view.navigation import page_header
+from view.loading import read
 from view.reference_table import reference_table
 from view.assets import procurement_icon_html
 from view.help import help_label
@@ -26,11 +27,8 @@ from view.widgets import (agency_filter, amount_filter, detail_expander, filter_
 
 page_header("item")
 export_slot = st.session_state._export_slot
-with st.spinner("품목 자료를 불러오는 중입니다…"):
-    _ = (metrics.events(), data.categories(), data.notices(), data.suppliers(), data.competition_levels())
-
 # ---- 사이드바: [필터 초기화] → 조달 유형·품목 → 기간 → 상세 조건(기관·금액, 접힘) ----
-item_categories = data.categories()
+item_categories = read('품목 선택지를 불러오는 중…', data.categories)
 default_category = item_categories.loc[item_categories["procurement_type"].eq("물품")
                                       & item_categories["category_value"].eq("23261507")]
 default_item = default_category.iloc[0]["item_code"] if len(default_category) == 1 else None
@@ -62,14 +60,16 @@ with filter_area():
 
 # ---- 계산(service) ----
 now = pd.Timestamp.now(tz="Asia/Seoul").tz_localize(None)
-res = queries.item_view(code, ItemFilter(tuple(years), role, tuple(agencies), tuple(amounts or ())), now)
-ev, filtered = res["ev"], res["filtered"]
+item_filter = ItemFilter(tuple(years), role, tuple(agencies), tuple(amounts or ()))
 
 # ---- 제목 ----
-level = res["level"]
 search_summary([f"유형: {ptype}", f"분류: {cat['display']}", f"개찰 연도: {years[0]}~{years[1]}년",
                 f"{role}: {compact_filter_values(agencies) if agencies else '전체'}",
                 f"낙찰금액: {compact_filter_values(amounts) if amounts else '전체'}"], "search_filter_summary_it")
+res = read('선택한 품목의 지표를 계산하는 중…', queries.item_view, code, item_filter, now,
+           include_suppliers=False)
+ev, filtered = res["ev"], res["filtered"]
+level = res['level']
 # 분석을 본 뒤 바로 할 수 있는 행동: 이 분류의 진행 중 공고로 이동
 open_n = res["open_n"]
 
@@ -168,7 +168,7 @@ checks.insert(2, "기준", [
     f"{years[0]}~{years[1]}년 개찰에 연결된 계약", f"{years[0]}~{years[1]}년 공고일",
 ])
 
-top_sup = res["suppliers"]
+top_sup = pd.DataFrame()
 
 tab_market, tab_entry, tab_sup = st.tabs(["시장·경쟁", "진입 조건", "낙찰 업체"])
 
@@ -250,6 +250,7 @@ with tab_entry:
 with tab_sup:
     st.markdown(f"#### 누가 낙찰받았나요? ({years[0]}~{years[1]}년 합계, 낙찰 건수 상위 15)")
     st.caption("선택한 분류·기간 전체 기준입니다. 기관·낙찰금액 필터는 이 업체 표에 적용되지 않습니다.")
+    top_sup = read('낙찰 업체 자료를 불러오는 중…', queries.item_suppliers, code, item_filter)
     if len(top_sup):
         reference_table(top_sup.rename(columns={"supplier_name": "업체", "award_count": "낙찰 (건)", "count_share": "낙찰 비중"}),
                         key="it_supplier_table", label="낙찰 업체", compact=True, width_scale=1.4,

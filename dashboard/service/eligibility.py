@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from service.requirement_overlay import usable_values
 
 OK, CHECK, NO, NEED_INPUT = "● 참여 가능", "▲ 원문 확인", "■ 참여 불가", "○ 내 조건 미입력"
 STATUS_OPTIONS = [OK, CHECK, NO, NEED_INPUT]
@@ -45,7 +46,9 @@ def judge_license(state, values, my_licenses: list[str]) -> Verdict:
         return Verdict(OK, "면허 제한 없음")
     if state != "제한있음":
         return Verdict(CHECK, "면허 조건 미확인 — 원문 확인")
-    required = {license_name(v) for v in split_values(values)}
+    required = {license_name(v) for v in usable_values(values)}
+    if not required:
+        return Verdict(CHECK, "면허 제한 상세 미확인 — 원문 확인")
     if not my_licenses:
         return Verdict(NEED_INPUT, "보유 면허를 입력하면 비교합니다")
     matched = required & set(my_licenses)
@@ -61,10 +64,12 @@ def judge_region(state, values, my_region: str | list[str] | tuple[str, ...] | N
         return Verdict(OK, "지역 제한 없음")
     if state != "제한있음":
         return Verdict(CHECK, "지역 조건 미확인 — 원문 확인")
+    allowed = usable_values(values)
+    if not allowed:
+        return Verdict(CHECK, "지역 제한 상세 미확인 — 원문 확인")
     if not my_region:
         return Verdict(NEED_INPUT, "소재지를 입력하면 비교합니다")
     regions = [my_region] if isinstance(my_region, str) else list(my_region)
-    allowed = split_values(values)
     matched = [r for r in regions if r in allowed]
     if matched:
         return Verdict(OK, f"{', '.join(matched)} 허용")

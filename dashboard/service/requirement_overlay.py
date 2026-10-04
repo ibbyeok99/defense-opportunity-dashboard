@@ -24,7 +24,8 @@ MAIN_OFFICE_REGION = re.compile(r"(?:법인등기부상\s*)?(?:본점\s*소재�
 
 def usable_values(value):
     """미확인 표시·원문 참조 문구는 실제 면허명/지역명이 아니다."""
-    placeholders = {"", "미확인", "UNKNOWN", "NAN", "NONE", "<NA>", "공고서참조", "공고문참조", "정보없음"}
+    placeholders = {"", "-", "–", "미확인", "UNKNOWN", "NAN", "NONE", "NULL", "<NA>",
+                    "공고서참조", "공고문참조", "정보없음"}
     return [v.strip() for v in str(value).split("|")
             if re.sub(r"\s+", "", v).upper() not in placeholders]
 

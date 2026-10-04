@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from datetime import date, timedelta
 
 import streamlit as st
+from view.favorite_snapshot import clean as clean_snapshots, snapshot
 
 STORAGE_KEY = "frontline_dashboard_prefs_v1"
 COMPONENT_KEY = "_browser_store"
@@ -23,7 +24,7 @@ FILTER_KEYS = ("nt_kw", "nt_when", "nt_types", "nt_agency_role", "nt_agency_수�
 # 목록 범위(2026-09-29: 사이드바 '참여 판단' 여러 개 선택 → 목록 위 두 개 선택)
 SCOPE_ALL = "모든 공고"
 SCOPE_COMPANY = "내 회사 조건에 맞는 공고"
-SCOPE_OPTIONS = [SCOPE_ALL, SCOPE_COMPANY]
+SCOPE_OPTIONS = [SCOPE_ALL]  # 회사 전용 목록은 일반 탐색으로 통합. 입력/상세 비교는 유지.
 
 
 def initial_notice_filters(today: date, types: list[str]) -> dict:
@@ -46,8 +47,8 @@ _WHEN_RENAMED = {"마감 7일 안": "7일 이내 마감", "마감 30일 안": "3
 def _upgrade(filters: dict) -> dict:
     """예전 저장값(nt_status·nt_deadline)을 nt_when으로 바꾼다. 브라우저 저장·저장한 검색 호환용."""
     filters = dict(filters)
-    if filters.get("nt_scope") == "참여 가능 공고":
-        filters["nt_scope"] = SCOPE_COMPANY
+    if "nt_scope" in filters:
+        filters["nt_scope"] = SCOPE_ALL
     if filters.get("nt_when") in _WHEN_RENAMED:
         filters["nt_when"] = _WHEN_RENAMED[filters["nt_when"]]
     if "nt_when" not in filters and ("nt_status" in filters or "nt_deadline" in filters):
@@ -88,27 +89,103 @@ def toggle_favorite(notice_id: str):
     items = favorites()
     if notice_id in items:
         items.remove(notice_id)
+        st.session_state.setdefault('favorite_snapshots', {}).pop(notice_id, None)
+        st.session_state.setdefault('_favorite_request_sources', {}).pop(notice_id, None)
     elif len(items) < MAX_FAVORITES:
         items.append(notice_id)
     else:
         st.toast("즐겨찾기는 최대 10개입니다. 기존 공고를 해제한 뒤 추가하세요.")
         return
     st.session_state.favorite_notices = items
+    if notice_id in items:
+        row = st.session_state.get('_favorite_available_sources', {}).get(notice_id)
+        if row is not None:
+            st.session_state.setdefault('_favorite_request_sources', {})[notice_id] = row.copy()
+            remember_favorite(row)
+
+
+def remember_sources(rows):
+    """표시 중인 최대20건과 저장된10건만 유지. 저장 버튼에서 참조한다."""
+    available = st.session_state.setdefault('_favorite_available_sources', {})
+    for row in rows.to_dict('records'):
+        available[row['notice_id']] = row
+        if row['notice_id'] in favorites():
+            st.session_state.setdefault('_favorite_request_sources', {})[row['notice_id']] = row.copy()
+    keep = set(favorites()) | set(rows.notice_id.tolist()[-20:])
+    st.session_state['_favorite_available_sources'] = {k: v for k, v in available.items() if k in keep}
+
+
+def remember_favorite(row):
+    notice_id = row.get('notice_id')
+    if notice_id in favorites():
+        records = st.session_state.setdefault('favorite_snapshots', {})
+        old = records.get(notice_id, {}).get('row', {})
+        unchanged = all(str(row.get(k, '')) == old.get(k, '') for k in ('notice_name', 'bid_close_date'))
+        if unchanged and old.get('requirement_checked_at') and not row.get('requirement_checked_at'):
+            return  # 확인 중인 기본 행으로 완료 사본을 덮지 않는다.
+        candidate = snapshot(row)
+        if old == candidate['row']:
+            return  # 동일한 결과를 2초마다 다시 저장하지 않는다.
+        records[notice_id] = candidate
+        st.session_state.favorite_snapshots = clean_snapshots(records, favorites())
+
+
+def favorite_snapshots():
+    return clean_snapshots(st.session_state.get('favorite_snapshots', {}), favorites())
+
+
+def profile_changed():
+    """공유 회사 입력 변경. 공고별 원문 확인 결과는 유지하고 이전 회사 판단만 무효화한다."""
+    st.session_state['_favorite_profile_revision'] = st.session_state.get('_favorite_profile_revision', 0) + 1
+    st.session_state.pop('_favorite_company_comparisons', None)
 
 _JS = """
 export default function (component) {
   const { data, setTriggerValue } = component
   const key = data.storage_key
   window.__frontlineStoreLoaded = window.__frontlineStoreLoaded || {}
+  window.__frontlineStoreLastPayload = window.__frontlineStoreLastPayload || {}
+  window.__frontlineStoreBaseline = window.__frontlineStoreBaseline || {}
+  const writer = key + ':' + data.writer_key
+  const parse = value => {
+    try {
+      const result = JSON.parse(value)
+      return result && typeof result === 'object' && !Array.isArray(result) ? result : {}
+    } catch (e) { return {} }
+  }
   let stored = null
   try { stored = window.localStorage.getItem(key) } catch (e) { stored = null }
   if (!window.__frontlineStoreLoaded[key]) {
     window.__frontlineStoreLoaded[key] = true
+    window.__frontlineStoreBaseline[key] = parse(stored)
     setTriggerValue("loaded", stored === null ? "" : stored)
     return
   }
-  if (typeof data.save === "string" && data.save !== stored) {
-    try { window.localStorage.setItem(key, data.save) } catch (e) {}
+  if (typeof data.save === "string" && window.__frontlineStoreLastPayload[writer] !== data.save) {
+    // 실제 바뀐 항목만 합친다. 다른 탭에서 해제한 공고를 오래된 세션이 복구하지 않는다.
+    try {
+      const next = parse(data.save)
+      const previous = writer in window.__frontlineStoreLastPayload
+        ? parse(window.__frontlineStoreLastPayload[writer]) : window.__frontlineStoreBaseline[key] || {}
+      const merged = parse(stored)
+      const different = (a, b) => JSON.stringify(a) !== JSON.stringify(b)
+      for (const field of ['profile', 'last', 'presets']) {
+        if (different(next[field], previous[field])) merged[field] = next[field]
+      }
+      const ids = value => Array.isArray(value) ? value.filter(v => typeof v === 'string' && v.length <= 512) : []
+      const before = ids(previous.favorites), after = ids(next.favorites)
+      const removed = before.filter(id => !after.includes(id))
+      const added = after.filter(id => !before.includes(id))
+      merged.favorites = [...new Set([...ids(merged.favorites).filter(id => !removed.includes(id)), ...added])].slice(0, 10)
+      const saved = Object.assign(Object.create(null), parse(JSON.stringify(merged.favorite_snapshots)))
+      for (const [id, record] of Object.entries(next.favorite_snapshots || {})) {
+        if (different(record, (previous.favorite_snapshots || {})[id])) saved[id] = record
+      }
+      merged.favorite_snapshots = Object.fromEntries(Object.entries(saved).filter(([id]) => merged.favorites.includes(id)))
+      const output = JSON.stringify(merged)
+      if (output !== stored) window.localStorage.setItem(key, output)
+      window.__frontlineStoreLastPayload[writer] = data.save
+    } catch (e) {}
   }
 }
 """
@@ -146,6 +223,8 @@ def _on_loaded(options: dict[str, list]):
     st.session_state["prefs_loaded"] = True
     state = st.session_state.get(COMPONENT_KEY)
     raw = state.get("loaded") if isinstance(state, Mapping) else getattr(state, "loaded", None)
+    if raw is not None and (not isinstance(raw, str) or len(raw) > 1_000_000):
+        return
     try:
         prefs = json.loads(raw) if raw else {}
     except (TypeError, ValueError):
@@ -158,6 +237,7 @@ def _on_loaded(options: dict[str, list]):
     presets = [p for p in prefs.get("presets", []) if isinstance(p, dict) and "name" in p and "filters" in p]
     st.session_state["saved_presets"] = presets[:MAX_PRESETS]
     st.session_state["favorite_notices"] = clean_favorites(prefs.get("favorites", []))
+    st.session_state['favorite_snapshots'] = clean_snapshots(prefs.get('favorite_snapshots', {}), favorites())
 
 
 def current_filters() -> dict:
@@ -195,7 +275,7 @@ def delete_preset(name: str):
     st.session_state.saved_presets = [p for p in presets() if p["name"] != name]
 
 
-def mount(options: dict[str, list]):
+def mount(options: dict[str, list], *, key=COMPONENT_KEY):
     """앱 맨 끝에서 한 번 부른다. options: 선택형 위젯의 허용 값(잘못된 저장값은 버림)."""
     save = None
     if st.session_state.get("prefs_loaded"):
@@ -204,6 +284,7 @@ def mount(options: dict[str, list]):
             "last": current_filters(),
             "presets": presets(),
             "favorites": favorites(),
+            "favorite_snapshots": favorite_snapshots(),
         }, ensure_ascii=False, default=str)
-    _component()(key=COMPONENT_KEY, data={"storage_key": STORAGE_KEY, "save": save},
+    _component()(key=key, data={"storage_key": STORAGE_KEY, "writer_key": key, "save": save},
            on_loaded_change=lambda: _on_loaded(options))

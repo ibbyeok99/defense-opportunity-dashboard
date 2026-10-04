@@ -6,7 +6,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from service import data, queries
-from view.favorites import render_favorites
+from view.favorites import render_favorites, saved_preview
+from view.loading import read
 from service.filters import Profile
 from service.eligibility import STATUS_OPTIONS
 from view import store
@@ -14,16 +15,24 @@ from view.navigation import page_header
 from view.notice_detail import show_detail
 from service.notice_requirements import fetch_evidence, poll_detail_evidence
 from view.fmt import STATUS_COLORS
+from view.widgets import company_profile, filter_area
 
 page_header("favorites")
-regions = st.session_state.get("pf_region") or []
-regions = [regions] if isinstance(regions, str) else regions
-profile = Profile(tuple(regions), tuple(st.session_state.get("pf_licenses") or []))
+preview = st.empty()
+with preview.container():
+    saved_preview()
+with filter_area():
+    regions, licenses = company_profile(data.provinces(), data.license_names(), wait_note=True)
+    st.caption('관심 공고의 원문·첨부 조건을 확인한 뒤 입력한 회사 조건과 비교합니다.')
+profile = Profile(tuple(regions), tuple(licenses))
 ids = store.favorites()
 detail_id = st.session_state.pop('favorite_detail', None)
-rows = data.favorite_notices(ids) if ids else pd.DataFrame(columns=['notice_id'])
+rows = read('즐겨찾기의 최신 공고를 확인하는 중…', data.favorite_notices, ids) if ids else pd.DataFrame(columns=['notice_id'])
+store.remember_sources(rows)
+preview.empty()
 render_favorites(rows, requirement_reader=lambda values: queries.favorite_requirement_rows(values, poll_detail_evidence),
-                 detail_builder=lambda row: queries.notice_detail(row.notice_id, profile, notice=row))
+                 detail_builder=lambda row: queries.notice_detail(row.notice_id, profile, notice=row, include_competition=False),
+                 competition_loader=queries.notice_competition)
 notices = rows.set_index('notice_id', drop=False)
 
 if detail_id and detail_id in notices.index:

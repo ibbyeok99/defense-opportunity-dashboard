@@ -3,6 +3,7 @@
 import streamlit as st
 
 from service import data
+from view.loading import read
 from view.pdf import Report
 from view.institution_table import institution_table
 from view.widgets import filter_area, pdf_button
@@ -17,7 +18,7 @@ with st.container(border=True, gap="small"):
     st.caption("키워드가 있다는 이유만으로 포함하지 않습니다. 확정 근거가 부족한 기관은 검토 대기로 분리하고, 기관 정보가 없는 자료에는 국방 여부를 추정해 붙이지 않습니다.")
 
 try:
-    institutions = data.defense_institutions()
+    institutions = read('국방 기관 목록을 불러오는 중…', data.defense_institutions)
 except (FileNotFoundError, KeyError, ValueError):
     st.error("기관 목록을 불러올 수 없습니다. 잠시 후 다시 확인해 주세요.")
     st.stop()

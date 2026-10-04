@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from service import admin_access
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EDA_DIR = Path(os.environ.get("FRONTLINE_EDA_DIR", REPO_ROOT / "data" / "EDA"))
@@ -88,6 +89,8 @@ def read_requirement_evidence(*, include_expired=False, legacy_only=False) -> li
 @st.cache_data(ttl=60, max_entries=1, show_spinner=False)
 def read_api_requirement_evidence() -> list[dict]:
     """목록에서 재사용할 공식 API 값만 읽는다. 문서 추출/구조화는 실행하지 않는다."""
+    if SOURCE == 'api':
+        return _api_client().api_requirements()
     from service.requirement_overlay import fresh, prepare
     records = {}
     directory = requirement_evidence_directory()
@@ -264,6 +267,70 @@ def read_requirement_failures():
     return records
 
 
+@admin_access.api_guard
+@st.cache_data(ttl=60, max_entries=1, show_spinner=False)
+def read_collector_operations():
+    """운영 대장 GetObject·성공 로그 FilterLogEvents만 사용. 실패를 0으로 바꾸지 않는다."""
+    if SOURCE == 'api':
+        from service.admin_transport import client
+        from service.api_transport import DataAPIError
+        try:
+            return client().read('operations')
+        except DataAPIError:
+            from zoneinfo import ZoneInfo
+            return dict(checked_at=datetime.now(ZoneInfo('Asia/Seoul')).isoformat(),
+                        errors=['관리자 API 운영 상태 확인 실패'], last_success=None,
+                        repair_pending=None, judgment_pending=None, isolated_rows=None, repair_given_up=None)
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+    from io import BytesIO
+    from service import automatic_review
+    from service.operations import last_success, state_counts
+    now = datetime.now(ZoneInfo('Asia/Seoul'))
+    value = dict(checked_at=now.isoformat(), errors=[], last_success=None,
+                 repair_pending=None, judgment_pending=None, isolated_rows=None, repair_given_up=None)
+    if os.environ.get('FRONTLINE_REVIEW_BACKEND') == 'offline':
+        value['errors'] = ['오프라인 검증: 운영 연결 안 함']
+        return value
+    try:
+        s3 = automatic_review.client()
+        def read(key, maximum):
+            response = s3.get_object(Bucket=automatic_review.bucket(), Key=key)
+            body = response['Body']
+            try:
+                if response.get('ContentLength', maximum+1) > maximum:
+                    raise ValueError('대장 크기 한도 초과')
+                payload = body.read(maximum+1)
+                if len(payload) > maximum:
+                    raise ValueError('대장 크기 한도 초과')
+                return payload
+            finally:
+                body.close()
+        state = json.loads(read('state/pipeline_state.json', 32*1024*1024))
+        pending = pd.read_excel(BytesIO(read('reference/institutions/Allowlist_Pending.xlsx', 5*1024*1024)), dtype=str)
+        value.update(state_counts(state, pending))
+    except Exception:
+        value['errors'].append('운영 상태/판정 대장 확인 실패')
+    try:
+        logs = automatic_review.client('logs')
+        request = dict(logGroupName=os.environ.get('FRONTLINE_COLLECTOR_LOG_GROUP', '/ecs/frontline-g2b-dev-collector'),
+                       startTime=int((now-timedelta(hours=24)).timestamp()*1000), endTime=int(now.timestamp()*1000),
+                       filterPattern='{ $.code = "G2B-RUN00" }', limit=100)
+        events, tokens = [], set()
+        for _ in range(3):
+            response = logs.filter_log_events(**request)
+            events.extend(response.get('events', []))
+            token = response.get('nextToken')
+            if not token or token in tokens:
+                break
+            tokens.add(token)
+            request['nextToken'] = token
+        else:
+            raise ValueError('성공 로그 조회 한도 초과·최신 여부 미확인')
+        value['last_success'] = last_success(events)
+    except Exception:
+        value['errors'].append('수집 성공 로그 확인 실패')
+    return value
 
 
 def requirement_queue_path():
@@ -534,6 +601,9 @@ def mysql_metadata(query) -> dict:
 def read_pending_institutions(cols: list[str]) -> pd.DataFrame:
     """기관 판정 대기 목록(읽기 전용). 운영 원천은 S3 `reference/institutions/Allowlist_Pending.xlsx`.
     프로토타입은 로컬 사본이 있으면 읽고, 없으면 빈 표."""
+    if SOURCE == 'api':
+        from service.admin_transport import client
+        return pd.DataFrame(client().read('pending'), columns=cols)
     path = ALLOWLIST_DIR / "Allowlist_Pending.xlsx"
     if not path.exists():
         return pd.DataFrame(columns=cols)
@@ -571,6 +641,9 @@ def read_local_defense_institutions() -> pd.DataFrame:
 
 def read_historical_institution_codes() -> frozenset[str]:
     """과거 검토 완료 기관의 코드 집합. 현재 운영 대장은 기준에 섞지 않는다."""
+    if SOURCE == 'api':
+        from service.admin_transport import client
+        return frozenset(client().read('historical'))
     codes = set()
     for relative in ("TRY02/result/defense_institution_whitelist_try02_all.csv",
                      "TRY01/result/defense_institution_whitelist_final.csv"):
@@ -585,6 +658,9 @@ def read_historical_institution_codes() -> frozenset[str]:
 
 def read_automatic_institutions() -> pd.DataFrame:
     """자동 판정 Y/N 확인용 로컬 파일만 읽는다. 최신 S3 상태를 대신하지 않는다."""
+    if SOURCE == 'api':
+        from service.admin_transport import client
+        return pd.DataFrame(client().read('automatic-fallback'))
     frames = []
     for path in sorted((ALLOWLIST_DIR / "new_institutions").glob("신규기관_*.xlsx")):
         frame = pd.read_excel(path, dtype=str)

@@ -168,7 +168,7 @@ def apply(_page_title: str = ""):
 }}
 [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > :has(> .st-key-admin_foot),
 [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > .st-key-admin_foot {{ order: 9999; }}
-.st-key-admin_foot {{ align-items: flex-end; margin-top: 2.5rem; opacity: .45; }}
+.st-key-admin_foot {{ align-items: flex-start; margin-top: 2.5rem; opacity: .45; }}
 .st-key-admin_foot button {{ min-height: 0; padding: 0 .2rem; }}
 .st-key-admin_foot button p {{ font-size: .68rem; }}
 /* 자체 표·차트 도구 메뉴는 페이지 내보내기와 상세보기로 대체한다. */

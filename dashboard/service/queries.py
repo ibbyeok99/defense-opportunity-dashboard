@@ -15,6 +15,7 @@ from service.eligibility import judge, split_values
 from service.filters import YEAR_RANGE, ItemFilter, NoticeFilter, OverviewFilter, Profile
 from service.notice_sort import sort_by_deadline
 from service.notice_saved_details import saved_notice_details
+from service.requirement_overlay import usable_values
 
 
 def _agency_col(role: str) -> str:
@@ -112,6 +113,12 @@ def notice_detail(notice_id: str, profile: Profile, *, notice=None, include_comp
         ["지역", ", ".join(split_values(n["region_values"])) or n["region_state"], ", ".join(profile.region) or "미입력",
          reg.status, reg.reason],
     ], columns=["구분", "요구 조건", "내 조건", "판단", "이유"])
+    # 회사 입력 부족과 공고 근거 검토는 별개다. 안내를 추가하되 보수적인 판정은 유지한다.
+    conditions["입력 안내"] = [
+        f"회사 {label}를 입력해 비교하세요."
+        if n[f"{kind}_state"] == "제한있음" and usable_values(n[f"{kind}_values"]) and not supplied else ""
+        for kind, label, supplied in (("license", "면허", profile.licenses), ("region", "소재지", profile.region))
+    ]
     for index, kind in enumerate(("license", "region")):
         review = n.get(f"{kind}_review_status", "미조회")
         if review != "미조회":
@@ -148,10 +155,8 @@ def favorite_requirement_rows(rows, reader):
     snapshots, results = {}, []
     rows = rows.drop_duplicates('notice_id').head(10)
     for _, row in rows.iterrows():
-        needs_lookup = isinstance(row.get('requirement_evidence'), dict) or any(
-            row[kind + '_state'] == '미확인' or row.get(kind + '_requires_review', False)
-            for kind in ('license', 'region'))
-        snapshot = reader(row) if needs_lookup else {'phase': 'stored', 'message': 'DB 저장 요건'}
+        # 즐겨찾기는 API 값이 있어도 기타 참가자격/예외를 확인한다. poll은 저장 결과/작업을 재사용한다.
+        snapshot = reader(row)
         snapshots[row.notice_id] = snapshot
         if snapshot.get('result'):
             results.append(snapshot['result'])
@@ -213,7 +218,23 @@ def item_event_counts(f: ItemFilter) -> dict[str, int]:
     return ev.groupby("item_code").size().to_dict()
 
 
-def item_view(code: str, f: ItemFilter, now: pd.Timestamp) -> dict:
+def favorite_company_statuses(rows: pd.DataFrame, profile: Profile) -> dict:
+    """검증된 서버 행만 비교. 브라우저 표시 사본·IO·원문 확인을 사용하지 않는다."""
+    return {r['notice_id']: judge(r, profile.region, list(profile.licenses))[0]
+            for r in rows.head(10).to_dict('records')}
+
+
+def item_suppliers(code: str, f: ItemFilter) -> pd.DataFrame:
+    y0, y1 = f.years
+    sup = data.suppliers().query("item_code == @code and @y0 <= year <= @y1")
+    if not len(sup):
+        return pd.DataFrame()
+    agg = sup.groupby("supplier_name", as_index=False).agg(award_count=("award_count", "sum"))
+    agg["count_share"] = agg["award_count"] / agg["award_count"].sum()
+    return agg.sort_values("award_count", ascending=False).head(15)
+
+
+def item_view(code: str, f: ItemFilter, now: pd.Timestamp, *, include_suppliers=True) -> dict:
     """분류 하나의 요약·연도별 지표·진입 조건·낙찰 업체. 기관·금액 필터는 개찰 1건 단위로 다시 계산한다."""
     ev_all = metrics.events()
     ev = metrics.filter_events(ev_all[ev_all["item_code"] == code], years=f.years, agencies=list(f.agencies),
@@ -247,13 +268,7 @@ def item_view(code: str, f: ItemFilter, now: pd.Timestamp) -> dict:
     elif mysql_source:
         yearly["contract_count"] = pd.NA
         yearly["contract_amount"] = pd.NA
-    sup = data.suppliers().query("item_code == @code and @y0 <= year <= @y1")
-    if len(sup):
-        agg = sup.groupby("supplier_name", as_index=False).agg(award_count=("award_count", "sum"))
-        agg["count_share"] = agg["award_count"] / agg["award_count"].sum()
-        top_sup = agg.sort_values("award_count", ascending=False).head(15)
-    else:
-        top_sup = pd.DataFrame()
+    top_sup = item_suppliers(code, f) if include_suppliers else pd.DataFrame()
     summary = metrics.summarize(ev)
     if mysql_source and contract_supported:
         summary["contract_count"] = int(contract_year["contract_count"].sum()) if len(contract_year) else 0

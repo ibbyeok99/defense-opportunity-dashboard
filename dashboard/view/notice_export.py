@@ -8,6 +8,7 @@ HEADERS = {
 
 
 def notice_csv(frame):
-    if set(frame.columns) != set(HEADERS):
+    expected = set(HEADERS) - {'status'}
+    if set(frame.columns) not in (set(HEADERS), expected):
         raise ValueError('공고 내보내기 열 계약 불일치')
     return frame.rename(columns=HEADERS).to_csv(index=False).encode('utf-8-sig')

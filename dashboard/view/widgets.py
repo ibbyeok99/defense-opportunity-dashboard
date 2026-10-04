@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 from view.fmt import region_display
 from view.help import help_label
+from view import store
 
 
 def filter_area():
@@ -77,7 +78,7 @@ def filter_expander(label: str, key: str, icon: str | None = None):
     return st.expander(f"{label} · 펼치기/접기", expanded=False, key=key, icon=icon)
 
 
-def company_profile(provinces: list[str], licenses: list[str]) -> tuple[list[str], list[str]]:
+def company_profile(provinces: list[str], licenses: list[str], *, wait_note=False) -> tuple[list[str], list[str]]:
     """공고 화면 사이드바의 '내 회사 조건'(참여 판단용). 고르는 즉시 판단에 반영된다(검색 버튼 없음).
 
     영역은 기본 접힘이며 사용자가 펼치거나 접을 수 있다. 값은 브라우저에 저장된다.
@@ -93,11 +94,13 @@ def company_profile(provinces: list[str], licenses: list[str]) -> tuple[list[str
         help_label("소재지 (시·도)", "선택한 지역 중 하나라도 허용 지역이면 충족합니다. 지점 참가 요건은 공고 원문에서 확인하세요.", key="help_pf_region")
         st.multiselect("소재지 (시·도)", provinces, placeholder="여러 지역 선택", key="pf_region",
                        format_func=region_display,
-                       persist_state="session", select_all=False, label_visibility="collapsed")
+                       persist_state="session", select_all=False, label_visibility="collapsed", on_change=store.profile_changed)
         st.multiselect("보유 면허", licenses, key="pf_licenses", placeholder="면허 이름 검색",
-                       persist_state="session", select_all=False, wrap=True)
+                       persist_state="session", select_all=False, wrap=True, on_change=store.profile_changed)
         summarize_tags(".st-key-pf_licenses", len(lic), visible=5)
         summarize_tags(".st-key-pf_region", len(region), visible=5)
+        if wait_note:
+            st.caption('조건 변경 후 최신 정보 조회·참여 조건 비교에 시간이 걸릴 수 있습니다. 준비된 정보부터 표시합니다.')
     return st.session_state.get("pf_region") or [], st.session_state.get("pf_licenses") or []
 
 

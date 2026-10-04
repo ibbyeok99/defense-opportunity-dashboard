@@ -28,6 +28,30 @@ def verdict(status):
     return VERDICTS.get(status, (str(status), "check", "원문 확인이 필요합니다."))
 
 
+def condition_verdict(row):
+    """회사 미입력 안내를 우선 표시한다. 원천 판정/검토 사유는 수정하지 않는다."""
+    guidance = row.get("입력 안내", "")
+    if isinstance(guidance, str) and guidance:
+        return ("회사 면허 입력" if row["구분"] == "면허" else "회사 소재지 입력", "input", guidance)
+    return verdict(row["판단"])
+
+
+def judgement_banner(status, conditions):
+    rows = conditions.to_dict("records")
+    requested = [row["구분"] for row in rows if condition_verdict(row)[1] == "input"]
+    if status == "■ 참여 불가" or not requested:
+        _, tone, message = verdict(status)
+        return tone, message
+    fields = "·".join("보유 면허" if kind == "면허" else "소재지" for kind in requested)
+    return "input", f"참여 조건을 비교하려면 왼쪽 ‘내 회사 조건’에 {fields}를 입력해 주세요."
+
+
+def judgement_review_note(conditions):
+    """입력 안내로 인해 남아 있는 공고 검토가 가려지지 않게 별도로 안내한다."""
+    kinds = [row["구분"] for row in conditions.to_dict("records") if row["판단"] == "▲ 원문 확인"]
+    return "·".join(kinds) + " 조건은 원문 확인도 필요합니다." if kinds else ""
+
+
 def display_conditions(conditions):
     frame = conditions.copy(deep=True)
     frame['요구 조건'] = frame['요구 조건'].map(condition_text)
@@ -65,12 +89,15 @@ def requirements_html(conditions):
     parts.extend(f'<th scope="col">{label}</th>' for label in columns)
     parts.append('</tr></thead><tbody>')
     for row in conditions.to_dict("records"):
-        label, tone, _ = verdict(row["판단"])
+        label, tone, guidance = condition_verdict(row)
         parts.append('<tr>')
         parts.append(f'<th scope="row">{escape(_text(row["구분"]))}</th>')
         parts.extend(f'<td>{escape(_text(row[column]))}</td>' for column in ("요구 조건", "내 조건"))
+        reason = _text(row["이유"])
+        if row.get("입력 안내", ""):
+            reason = guidance + " · " + reason
         parts.append(f'<td><div class="detail-table-judgement"><span class="detail-verdict {tone}">{escape(label)}</span>'
-                     f'{hint_html(str(row["구분"]) + " 판단 이유", _text(row["이유"]))}</div></td></tr>')
+                     f'{hint_html(str(row["구분"]) + " 판단 이유", reason)}</div></td></tr>')
     parts.append('</tbody></table></div>')
     return "".join(parts)
 

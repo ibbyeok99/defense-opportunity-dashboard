@@ -3,6 +3,7 @@
 import streamlit as st
 
 from service import data
+from view.loading import read
 
 st.header("분류명 매칭 기준", anchor=False)
 st.caption("어떤 자료로 분류 이름을 표시하는지, 공식 품명과 어떤 차이가 있는지 확인합니다.")
@@ -15,7 +16,7 @@ with st.container(border=True):
                 "4. 이름이 미확정이면 **물품분류번호 + 코드**로 표시합니다. 공식 목록에 없는 코드를 다른 코드로 바꾸거나 합치지 않습니다.")
     st.caption("현재 공식 품명 기준이며, 과거 공고 당시의 이름과 다를 수 있습니다. 공사·용역의 공공조달분류번호·공종명은 별도 기준입니다. 외자도 8자리 물품분류번호가 정확히 일치할 때만 이름을 연결합니다. 분류번호와 통계값은 바꾸지 않습니다.")
 
-audit = data.category_name_audit()
+audit = read('분류 이름과 공식 품명 대조 결과를 불러오는 중…', data.category_name_audit)
 goods = audit.loc[audit["유형"].isin(["물품", "외자"]) & audit["분류 방식"].eq("product8")]
 st.caption(f"공식 목록 확인일: {audit.attrs['checked_at']} · 이 날짜에 확인한 공식 품명을 표시합니다.")
 st.link_button("조달청 공식 서비스·명세", audit.attrs["source"], icon=":material/open_in_new:", type="tertiary")

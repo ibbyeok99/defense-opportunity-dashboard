@@ -109,6 +109,9 @@ def kpi_tiles(items: list[dict], prefix: str):
     for i, (col, it) in enumerate(zip(st.columns(len(items)), items)):
         color = it.get("color", "blue")
         with col, st.container(border=True, height=STRETCH, key=f"kpi_{color}_{prefix}_{i}"):
+            # 자리/규격/테마는 유지하고 내용만 비워 다음 용도로 예약한다.
+            if it.get("blank"):
+                continue
             delta = it.get("delta") if it.get('show_delta', True) else None
             known_delta = delta not in (None, "", "–", "−", "-")
             with st.container(horizontal=True, vertical_alignment="center", gap="small",

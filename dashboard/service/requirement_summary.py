@@ -69,6 +69,9 @@ def summarize_participation(result):
     """
     if not isinstance(result, dict):
         return []
+    if result.get('projection_schema'):
+        from service.requirement_projection import validate
+        return [dict(item, excerpts=[], evidence=[]) for item in validate(result).get('participation_summary', [])]
     entries, seen = {}, set()
     for index, evidence in enumerate(result.get('evidence', [])):
         if evidence.get('scope') != '참가자격 구역':

@@ -7,6 +7,7 @@ import streamlit as st
 from view.fmt import notice_identifier, notice_status_label, num, pct, region_display, dday_text
 from view.help import help_icon
 from view.reference_table import reference_table
+from view.detail_design import condition_verdict, judgement_banner, judgement_review_note, verdict
 
 
 def compare_notices(details: list[dict]) -> pd.DataFrame:
@@ -32,11 +33,17 @@ def compare_notices(details: list[dict]) -> pd.DataFrame:
             "공동수급 방식": participation.get('공동수급 방식', '미제공'),
             "내 회사 조건 비교": notice_status_label(det["status"]),
         }
+        if '판단' in det['conditions']:
+            tone, message = judgement_banner(det['status'], det['conditions'])
+            if tone == 'input':
+                entries['내 회사 조건 비교'] = message
         for _, condition in det["conditions"].iterrows():
             required = condition_text(condition["요구 조건"])
             if condition["구분"] == "지역":
                 required = ", ".join(region_display(p) for p in required.split(", "))
             entries[f"{condition['구분']} 요구 조건"] = required
+            if '판단' in condition:
+                entries[f"{condition['구분']} 조건 비교"] = condition_verdict(condition)[0]
         c = det.get("competition")
         entries["과거 경쟁 기준"] = f"{int(c['year'])}년 · 분류 전체" if c is not None else "자료 없음"
         entries["과거 개찰 표본 수 (분류)"] = f"{num(c['event_count'])}건" if c is not None and pd.notna(c.get('event_count')) else "자료 없음"
@@ -53,7 +60,7 @@ def comparison_sections(details):
     """같은 원본 비교 결과를 업무 요건·기본 정보·분류 참고로 분리한다."""
     frame = compare_notices(details)
     key_rows = [r for r in frame.index if r in ("마감", "내 회사 조건 비교", '배정예산', '추정가격',
-                                               '입찰참가자격 등록 마감', '공동수급 방식') or r.endswith("요구 조건")]
+                                               '입찰참가자격 등록 마감', '공동수급 방식') or r.endswith(("요구 조건", "조건 비교"))]
     reference_rows = [r for r in frame.index if r.startswith("과거 ") or "(분류)" in r]
     basics = [r for r in frame.index if r not in key_rows + reference_rows]
     return frame.loc[key_rows].copy(), frame.loc[basics].copy(), frame.loc[reference_rows].copy()
@@ -83,8 +90,12 @@ def render_comparison(details, today, *, on_detail=None):
                               args=(n["notice_id"],))
             st.metric("마감까지", dday_text(days))
             st.caption(pd.Timestamp(deadline).strftime("%Y-%m-%d %H:%M") if pd.notna(deadline) else "마감일 미확인")
-            tone = {"● 참여 가능": "green", "▲ 원문 확인": "orange", "■ 참여 불가": "red"}.get(detail["status"], "gray")
-            st.badge(notice_status_label(detail["status"]), color=tone)
+            state, message = (judgement_banner(detail['status'], detail['conditions'])
+                              if '판단' in detail['conditions'] else verdict(detail['status'])[1:])
+            tone = {'ok':'green', 'check':'orange', 'no':'red', 'input':'gray'}[state]
+            st.badge(message if state == 'input' else notice_status_label(detail['status']), color=tone)
+            if state == 'input' and (note := judgement_review_note(detail['conditions'])):
+                st.caption(note)
             # 긴 공고명 때문에 비교의 핵심인 마감 수치·판단 위치가 어긋나지 않게 한다.
             st.markdown(f"**{n['notice_name']}**")
             st.caption(f"{n['procurement_type']} · {n['demand_agency_name']}")

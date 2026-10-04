@@ -122,3 +122,13 @@ class DataAPIClient:
             return result
         except (ValueError, TypeError, KeyError):
             raise DataAPIError('저장 요건 결과의 공고·버전·형식을 확인하지 못했습니다.') from None
+
+    def api_requirements(self):
+        from service.api_requirement_list import prepared, MAX_BYTES
+        try:
+            value = json.loads(self._get('/v1/api-requirements', 'application/json', timeout=(3, 8), payload_limit=MAX_BYTES))
+            if not isinstance(value, dict) or set(value) != {'records'}:
+                raise ValueError
+            return prepared(value['records'])
+        except (ValueError, TypeError, KeyError):
+            raise DataAPIError('저장된 공식 조건의 형식을 확인하지 못했습니다.') from None

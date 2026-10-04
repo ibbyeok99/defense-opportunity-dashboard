@@ -18,10 +18,12 @@ from service.source import read_automatic_institutions
 from service.source import read_product_name_reference
 from service.category_quality import apply_official_names, catalog_audit
 from service.institution_display import roles_label, reason_label
+from service import admin_access
 
 TYPES = ["물품", "용역", "공사", "외자"]
 
 
+@admin_access.api_guard
 @st.cache_data(ttl=NOTICE_TTL)
 def automatic_institutions() -> pd.DataFrame:
     return read_automatic_institutions()
@@ -386,6 +388,7 @@ def data_quality() -> pd.DataFrame:
                                                    "count", "rate"])
 
 
+@admin_access.api_guard
 @st.cache_data(ttl="5m")
 def pending_institutions() -> pd.DataFrame:
     """관리자 화면용 기관 판정 대기 목록(읽기 전용).

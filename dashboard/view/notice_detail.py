@@ -7,13 +7,15 @@ import pandas as pd
 import streamlit as st
 from view import store
 from view.detail_design import (SCOPE_NOTE, agency_value, apply_detail_style, basic_row,
-                                display_conditions, requirements_html, section_heading, verdict)
+                                condition_verdict, display_conditions, judgement_banner,
+                                judgement_review_note, requirements_html, section_heading, verdict)
 from view.fmt import num, pct, notice_status_label, notice_identifier, dday_text, deadline_tone
 from view.pdf import Report
 from view.widgets import pdf_button, safe_name
 from view.requirement_evidence import evidence_panel
 from view.notice_saved_details import saved_details_panel
 from view.participation_requirements import participation_panel
+from view.loading import read
 
 
 @st.dialog("공고 상세", width="large", on_dismiss="rerun")
@@ -29,6 +31,10 @@ def _render_detail(det, today, color='gray', evidence_checker=None, on_evidence_
     if snapshot and snapshot.get('result') and detail_updater:
         det = detail_updater(det, snapshot['result'])
     n, status = det["notice"], det["status"]
+    if n['notice_id'] in store.favorites():
+        store.remember_favorite(n)
+    if n['notice_id'] not in st.session_state.get('_favorite_available_sources', {}):
+        store.remember_sources(pd.DataFrame([n]))
     conditions = display_conditions(det["conditions"])
     if snapshot and snapshot['phase'] == 'running':
         for index, kind in enumerate(('license', 'region')):
@@ -75,11 +81,13 @@ def _render_detail(det, today, color='gray', evidence_checker=None, on_evidence_
 
         with judgement.container(border=True, key="detail_judgement", gap="xsmall", height="stretch"):
             section_heading("참여 조건 판단", SCOPE_NOTE, key="judgement")
-            _, tone, message = verdict(status)
+            tone, message = judgement_banner(status, conditions)
             st.html(f'<div class="detail-banner {tone}">{escape(message)}</div>')
+            if tone == 'input' and (review_note := judgement_review_note(conditions)):
+                st.caption(review_note)
             # 엔진은 면허·지역만 비교한다. 이미지의 다른 자격을 적합으로 꾸미지 않는다.
             for index, row in enumerate(conditions.to_dict("records")):
-                label, badge_tone, _ = verdict(row["판단"])
+                label, badge_tone, _ = condition_verdict(row)
                 with st.container(horizontal=True, wrap=True, vertical_alignment="center",
                                   horizontal_alignment="distribute", gap="small",
                                   key=f"detail_condition_row_{index}"):
@@ -111,7 +119,7 @@ def _render_detail(det, today, color='gray', evidence_checker=None, on_evidence_
                     # 저장 상세·요건 상태를 먼저 그린 뒤, 기존 통계 캐시를 읽는다.
                     st.caption('분류의 과거 경쟁 자료 찾는 중…')
                     st.session_state[cache_key] = {'checked_at': monotonic(),
-                                                   'result': competition_loader(n['item_code'])}
+                                                   'result': read('분류 과거 경쟁 자료를 불러오는 중…', competition_loader, n['item_code'])}
                 stats = st.session_state[cache_key]['result']
                 c, days = stats['competition'], stats['contract_days']
             if c is None:
@@ -134,8 +142,10 @@ def _render_detail(det, today, color='gray', evidence_checker=None, on_evidence_
                          footer="Frontline Data · 국방 조달 탐색")
             rep.kv([("마감", n["bid_close_date"].strftime("%Y-%m-%d %H:%M") if pd.notna(n["bid_close_date"]) else "–"),
                     ("수요기관", n["demand_agency_name"]), ("종합 판단", notice_status_label(status))])
-            report_conditions = conditions.copy()
-            report_conditions["판단"] = report_conditions["판단"].map(notice_status_label)
+            report_conditions = conditions.drop(columns=['입력 안내'], errors='ignore').copy()
+            report_conditions["판단"] = [condition_verdict(row)[0] if row.get('입력 안내')
+                                         else notice_status_label(row['판단'])
+                                         for row in conditions.to_dict('records')]
             rep.heading("참여 조건").table(report_conditions)
             if det.get('participation_requirements'):
                 rep.heading('기타 참가조건 · 원문 검토 필요').kv([

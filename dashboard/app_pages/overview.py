@@ -17,6 +17,7 @@ from view.plotly_charts import bar_figure, line_figure, show, show_donut
 from view.fmt import CONTRACT_AMOUNT_MESSAGES, num, pct, region_display
 from view.pdf import Report
 from view.navigation import page_header
+from view.loading import read
 from view.help import help_label
 from view.search_summary import search_summary
 from view.contract_patterns import show_contract_patterns
@@ -26,9 +27,7 @@ from view.widgets import (agency_filter, amount_filter, detail_expander, filter_
 
 page_header("overview")
 export_slot = st.session_state._export_slot
-with st.spinner("시장 자료를 불러오는 중입니다…"):  # 첫 접속 때 빈 화면처럼 보이지 않게
-    _ = (metrics.events(), data.notices())
-    cats = data.categories()
+cats = read('분류 선택지를 불러오는 중…', data.categories)
 
 OV_DEFAULTS = {"ov_years": YEAR_RANGE, "ov_types": [], "ov_agency_role": "수요기관", "ov_agency_수요기관": [],
                "ov_agency_공고기관": [], "ov_items": [], "ov_region": None, "ov_amount": [], "ov_outcome": []}
@@ -60,9 +59,6 @@ with filter_area():
 
 
 # ---- 계산(service) ----
-res = queries.overview_view(OverviewFilter(tuple(years), tuple(types), role, tuple(agencies), tuple(items), region,
-                                           tuple(amounts or ()), tuple(outcomes or ())))
-ev = res["ev"]
 filtered = any([tuple(years) != YEAR_RANGE, st.session_state.get("ov_types"), agencies, items, region, amounts,
                 outcomes])
 
@@ -72,6 +68,10 @@ search_summary([f"개찰 연도: {years[0]}~{years[1]}년", "유형: " + compact
                 f"참가 지역: {region_display(region) if region else '전체'}",
                 "낙찰금액: " + (compact_filter_values(amounts) if amounts else "전체"),
                 "낙찰·유찰: " + (compact_filter_values(outcomes) if outcomes else "전체")], "search_filter_summary_ov")
+res = read('선택한 조건의 시장 지표를 계산하는 중…', queries.overview_view,
+           OverviewFilter(tuple(years), tuple(types), role, tuple(agencies), tuple(items), region,
+                          tuple(amounts or ()), tuple(outcomes or ())))
+ev = res['ev']
 badges = []
 if filtered:
     badges.append(":blue-badge[필터 적용 · 대시보드 재계산]")

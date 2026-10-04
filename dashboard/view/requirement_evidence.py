@@ -68,7 +68,7 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
             st.caption("확인 결과는 요건 표·검색에 반영됩니다. 24시간이 지나면 다시 확인합니다.")
         if result.get('projection_schema'):
             st.caption('PC에서 저장한 확인 결과입니다. 원문·첨부파일·발췌 사본은 전송하지 않습니다.')
-            st.info('근거 문장과 예외·기준일은 나라장터 원문을 확인하거나 ‘요건 다시 확인’을 눌러 확인하세요.')
+            st.info('정리된 기타 참가조건은 상세 요약에 표시합니다. 근거 문장과 예외·기준일은 나라장터 원문을 확인하거나 ‘요건 다시 확인’을 눌러 확인하세요.')
             return
         for kind in ("면허", "지역", "참가자격", "기타 참가조건"):
             items = [e for e in result["evidence"] if e["kind"] == kind and e.get("relevant", True)]

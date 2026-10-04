@@ -1,5 +1,5 @@
 # Community Cloud 고객 화면. 로컬 DB API는 requirements-db.txt도 설치한다.
-streamlit==1.64.0
+streamlit[auth]==1.64.0
 pandas==3.0.6
 pyarrow==24.0.0
 altair==6.3.0

@@ -14,6 +14,9 @@ def participation_panel(items):
         preview = excerpt if len(excerpt) <= 220 else excerpt[:220] + '… [전체 발췌 보기]'
         st.markdown('**' + item['category'] + '**')
         st.text(preview)
+        if not item['evidence'] and not item['excerpts']:
+            st.caption('PC 저장 결과의 정리된 요약입니다. 근거·예외·기준일은 공고 원문에서 확인하세요.')
+            continue
         if any(evidence['method'] == 'ocr' for evidence in item['evidence']):
             st.caption('이미지에서 읽은 내용 포함 · 원문 대조 필요')
         with st.expander(f"{item['category']} 근거·예외 보기 · {len(item['excerpts'])}개 문장"):
