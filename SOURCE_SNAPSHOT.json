@@ -562,8 +562,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "7c4277a82e3f10ff78e137af5c06c5214d54346d7c08c59329cde789ef455c7b",
-      "git_lf_sha256": "7c4277a82e3f10ff78e137af5c06c5214d54346d7c08c59329cde789ef455c7b"
+      "sha256": "0a6787db4c742bd5378b5e735c87777ed60727af6f13c22c60dc29382fcf2d24",
+      "git_lf_sha256": "0a6787db4c742bd5378b5e735c87777ed60727af6f13c22c60dc29382fcf2d24"
     },
     {
       "path": "requirements.txt",
@@ -587,8 +587,8 @@
     },
     {
       "path": "검증결과.md",
-      "sha256": "67ad2e9a34b3e5bb2cff157d7fe7899548adbd2cb55cee4e06466d63e6869c90",
-      "git_lf_sha256": "67ad2e9a34b3e5bb2cff157d7fe7899548adbd2cb55cee4e06466d63e6869c90"
+      "sha256": "a5120735ae5e2b123054d73d8d875281570434cfe360d5e365ebf9ac3c7f8202",
+      "git_lf_sha256": "a5120735ae5e2b123054d73d8d875281570434cfe360d5e365ebf9ac3c7f8202"
     },
     {
       "path": "소스코드_안내.md",
@@ -604,9 +604,10 @@
     }
   ],
   "update_date": "2026-10-04",
-  "update_basis": "승인된 로컬 화면과 관리자 기능. OIDC+별도 관리자API 권한. 원문/첨부 사본·비밀값·서버 코드 제외. 재배포 전 수정본.",
+  "update_basis": "승인된 고객 코드 b9fcd16 사이트 반영·실제 화면 검증 완료. 후속 문서 갱신 포함. 관리자 OIDC/별도 키 미설정·로그인 미완료. 원문/첨부 사본·비밀값·서버 코드 제외.",
   "source_working_tree_base": "4e8270e40c4211cd5d12410de30991d1457bde3b",
-  "previous_deployment_commit": "651b260d11ca772fa14b8765e1e69035d366cd60",
+  "previous_deployment_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
   "working_tree_patch_included": true,
-  "status": "reviewed_working_tree_not_deployed"
+  "deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
+  "status": "deployed_customer_ui_verified_admin_setup_pending"
 }
