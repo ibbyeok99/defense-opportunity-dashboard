@@ -496,7 +496,10 @@ def poll_detail_evidence(notice, force=False):
     job_id = (pt, number, order, fingerprint, SCHEMA)
     jobs = _detail_jobs()
     existing = jobs.peek(job_id)
-    if existing and (existing['phase'] == 'running' or not force):
+    existing_result = existing.get('result') if existing else None
+    expired_shared = bool(isinstance(existing_result, dict) and existing_result.get('projection_schema')
+                          and not fresh(existing_result))
+    if existing and (existing['phase'] == 'running' or (not force and not expired_shared)):
         return existing
     saved = notice.get('requirement_evidence')
     if not isinstance(saved, dict) or saved.get('api_only'):
@@ -507,9 +510,22 @@ def poll_detail_evidence(notice, force=False):
     key = source.requirement_service_key()  # 세션 밖 worker에서 Secrets를 읽지 않는다.
     expected_title = str(notice.get('notice_name', '')).strip()
     expected_close = notice.get('bid_close_date')
+    # Streamlit Secrets는 메인 스레드에서 읽고, HTTP는 worker에서만 실행한다.
+    shared_client = source._api_client() if source.SOURCE == 'api' else None
+    from service.requirement_queue import source_fingerprint
+    stored_hash = source_fingerprint(notice)
 
     def work(progress):
         import pandas as pd
+        if shared_client is not None and not force:
+            from service.api_transport import DataAPIError
+            progress('저장된 확인 결과 찾는 중…')
+            try:
+                shared = shared_client.requirement(pt, number, order, stored_hash, fingerprint)
+            except DataAPIError:
+                shared = None  # 이전 API/일시 실패도 원문 확인 기능을 막지 않는다.
+            if shared is not None:
+                return shared
         # 공개 원문은 API 키가 필요 없다. 저장 첨부 주소/입력만 worker에 넘긴다.
         # 키 없는 환경에서도 앞선 저장 정보는 즉시 보이고 조회만 비동기로 진행한다.
         result = (check_requirements(number, order, pt, key, on_progress=progress) if key else
@@ -524,4 +540,4 @@ def poll_detail_evidence(notice, force=False):
         result['detail_fingerprint'] = fingerprint
         return source.save_requirement_evidence(result, pt)
 
-    return jobs.start(job_id, work, force=force)
+    return jobs.start(job_id, work, force=force or expired_shared)

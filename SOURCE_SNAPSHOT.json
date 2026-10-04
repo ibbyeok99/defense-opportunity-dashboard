@@ -197,8 +197,8 @@
     },
     {
       "path": "dashboard/service/api_transport.py",
-      "sha256": "f7ead91830f41e83aa41ab509bfe77fb9c766f2cd26a9150257139b7af16ae6a",
-      "git_lf_sha256": "f7ead91830f41e83aa41ab509bfe77fb9c766f2cd26a9150257139b7af16ae6a"
+      "sha256": "09c919284e29e40eead764fc40c0fb1ea97c3058366b15ca5e30fb78d7321c4c",
+      "git_lf_sha256": "09c919284e29e40eead764fc40c0fb1ea97c3058366b15ca5e30fb78d7321c4c"
     },
     {
       "path": "dashboard/service/category_quality.py",
@@ -252,8 +252,8 @@
     },
     {
       "path": "dashboard/service/notice_requirements.py",
-      "sha256": "63dbb6011378e63fb44bbac111207c39b9ac4b7b91fd49c19e30233d0d53bba2",
-      "git_lf_sha256": "63dbb6011378e63fb44bbac111207c39b9ac4b7b91fd49c19e30233d0d53bba2"
+      "sha256": "e9b10a585f6e5302b0a0abc307afb85f3b6875e81e0ff6d427aa8c0f86e5123c",
+      "git_lf_sha256": "e9b10a585f6e5302b0a0abc307afb85f3b6875e81e0ff6d427aa8c0f86e5123c"
     },
     {
       "path": "dashboard/service/notice_saved_details.py",
@@ -307,8 +307,13 @@
     },
     {
       "path": "dashboard/service/requirement_overlay.py",
-      "sha256": "a9f367068bb506751bbf7f492c5842e53ee120a36a9b989e280558d18088235c",
-      "git_lf_sha256": "a9f367068bb506751bbf7f492c5842e53ee120a36a9b989e280558d18088235c"
+      "sha256": "5c4f3231d695807d9c93201f7902c2ca0f630dff2e36d99f64306c7dc2b9440a",
+      "git_lf_sha256": "5c4f3231d695807d9c93201f7902c2ca0f630dff2e36d99f64306c7dc2b9440a"
+    },
+    {
+      "path": "dashboard/service/requirement_projection.py",
+      "sha256": "e695849978c176c7d07f26ef7ff21e13f969718079e719449d683ce35ed48b25",
+      "git_lf_sha256": "e695849978c176c7d07f26ef7ff21e13f969718079e719449d683ce35ed48b25"
     },
     {
       "path": "dashboard/service/requirement_queue.py",
@@ -457,8 +462,8 @@
     },
     {
       "path": "dashboard/view/requirement_evidence.py",
-      "sha256": "a18aa6ca88f0556d847db49cddf93a0660f0700242936d95034cdc1fec0fda7c",
-      "git_lf_sha256": "a18aa6ca88f0556d847db49cddf93a0660f0700242936d95034cdc1fec0fda7c"
+      "sha256": "d23fc86263aebd2f152fb8caea70f157674bc63fe10a42e8ffa947a0b551a4b2",
+      "git_lf_sha256": "d23fc86263aebd2f152fb8caea70f157674bc63fe10a42e8ffa947a0b551a4b2"
     },
     {
       "path": "dashboard/view/search_summary.py",
@@ -497,8 +502,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "e3c765f59a7bd5c14d6f03d68eac15cb4ee068e1173e4f248250592c546df79d",
-      "git_lf_sha256": "e3c765f59a7bd5c14d6f03d68eac15cb4ee068e1173e4f248250592c546df79d"
+      "sha256": "473b68bf1c4dccb85ecf55920b2570169f1b4f87ef7a151335d3415d93aca4f4",
+      "git_lf_sha256": "473b68bf1c4dccb85ecf55920b2570169f1b4f87ef7a151335d3415d93aca4f4"
     },
     {
       "path": "requirements.txt",
@@ -527,8 +532,8 @@
     },
     {
       "path": "소스코드_안내.md",
-      "sha256": "b084a02e1eb55bc50d3847e019352ad1334dc1aceec9e26320c29169c6fcbfb1",
-      "git_lf_sha256": "b084a02e1eb55bc50d3847e019352ad1334dc1aceec9e26320c29169c6fcbfb1"
+      "sha256": "6e2b28b215b2e5a1ccb7e67e1b108659dd7e1fdbaebfcfc5167bf478253e8a6a",
+      "git_lf_sha256": "6e2b28b215b2e5a1ccb7e67e1b108659dd7e1fdbaebfcfc5167bf478253e8a6a"
     }
   ],
   "updates": [
@@ -540,6 +545,6 @@
   ],
   "update_date": "2026-10-04",
   "update_basis": "승인된 현재 로컬 고객 화면. 관리자 진입 제외 전용 엔트리포인트. 원본 데이터/비밀값 제외.",
-  "source_working_tree_base": "7436789f973e7cdd6b2b3eea0623fe0f24826204",
-  "previous_deployment_commit": "4a18b51fb85fa493ff767a1d2ebb0aaddb1e415a"
+  "source_working_tree_base": "0ec54f626e978ad3ff4ea8980ea98c2fbddf858f",
+  "previous_deployment_commit": "7bc8aafb9662b4deeda93d091ce350ed63c80616"
 }

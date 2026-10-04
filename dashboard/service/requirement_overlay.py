@@ -52,6 +52,9 @@ def fresh(record, now=None) -> bool:
 
 def condition(result, kind):
     """API 구조화 값, 명시적 없음, 해석할 문장을 각각 구분한다."""
+    if result.get('projection_schema'):
+        from service.requirement_projection import validate
+        return validate(result)['resolved'][kind]
     if any(re.search(r'제목 불일치|식별자.*불일치|공고번호·차수 불일치', str(s.get('reason', '')))
            for s in result.get('sources', [])):
         return dict(state='미확인', values='', review='근거 충돌', manual=True,
