@@ -195,7 +195,8 @@ kpi_tiles([
     {"label": "회사 조건 충족", "value": f"{counts.get(OK, 0) if my_region or my_licenses else 0:,}건", "color": "green",
      "instruction": company_instruction,
      "help": "입력한 소재지·면허와 공개된 조건을 비교한 결과입니다. 최종 참가 자격은 공고 원문을 확인하세요."},
-    {"label": "원문 확인 필요", "value": f"{counts.get(CHECK, 0):,}건", "color": "orange"},
+    {"label": "상세 확인", "value": f"{counts.get(CHECK, 0):,}건", "color": "orange",
+     "help": "검색 결과 중 면허·지역 조건의 상세 확인이 필요한 공고 수입니다. 공고 상세에서 확인된 조건과 남은 확인 사항을 살펴보세요. 제한 없음이나 참가 가능을 뜻하지 않습니다."},
 ], prefix="nt")
 # 보조 지표(참여 불가·조건 미입력)는 작게 한 줄로(디자인 검토 2026-09-28)
 st.caption(f":red[{NO}] {counts.get(NO, 0):,}건 · {NEED_INPUT} {counts.get(NEED_INPUT, 0):,}건")

@@ -13,6 +13,7 @@ CARD_ICON_FILES = {
     "회사 조건 충족": "notice_company_match.png",
     "▲ 원문 확인 필요": "notice_review.png",
     "원문 확인 필요": "notice_review.png",
+    "상세 확인": "notice_review.png",
     "참가업체 수 (중앙값)": "participants.png",
     "단독입찰 비율": "single_bid.png",
     "상위 3개 업체 점유": "supplier_share.png",
@@ -38,6 +39,7 @@ CARD_SYMBOLS = {
     "회사 조건 충족": "business",
     "▲ 원문 확인 필요": "description",
     "원문 확인 필요": "description",
+    "상세 확인": "description",
 }
 
 

@@ -60,7 +60,7 @@ def requirement_evidence_directory() -> Path:
 
 
 @st.cache_data(ttl=60, max_entries=2, show_spinner=False)
-def read_requirement_evidence(*, include_expired=False) -> list[dict]:
+def read_requirement_evidence(*, include_expired=False, legacy_only=False) -> list[dict]:
     """공개 근거 보완 사본만 읽는다. 잘못된 파일은 요건으로 사용하지 않는다."""
     from service.requirement_overlay import fresh, prepare
     records = {}
@@ -68,6 +68,8 @@ def read_requirement_evidence(*, include_expired=False) -> list[dict]:
     if not directory.exists():
         return []
     for path in directory.glob("*.json"):
+        if legacy_only and path.name.startswith('public_'):
+            continue
         try:
             if path.stat().st_size > 1024 * 1024:
                 continue
@@ -92,11 +94,19 @@ def read_api_requirement_evidence() -> list[dict]:
     if not directory.exists():
         return []
     for path in directory.glob('*.json'):
+        # 전수 원문 사본이 늘어도 일반 목록은 본문 JSON을 열지 않는다.
+        # 과거 무접두사 사본은 아래 input_mode 검사로 계속 안전하게 제외한다.
+        if path.name.startswith('public_'):
+            continue
         try:
             if path.stat().st_size > 1024 * 1024:
                 continue
             raw = json.loads(path.read_text(encoding='utf-8'))
             if not isinstance(raw, dict) or raw.get('error') or not fresh(raw):
+                continue
+            # 공개 화면/첨부 사본은 API 조회가 아니다. 새 빈 API 행으로 이전의
+            # 유효한 API 확인값을 목록에서 지우지 않는다.
+            if raw.get('input_mode') == '저장 API 재사용':
                 continue
             if any(not isinstance(raw.get('api_' + kind + '_rows', []), list) or
                    any(not isinstance(row, dict) for row in raw.get('api_' + kind + '_rows', []))
@@ -113,13 +123,40 @@ def read_api_requirement_evidence() -> list[dict]:
     return list(records.values())
 
 
+def read_requirement_checkpoint_evidence(state):
+    """별도 전수 처리기의 재개용. 이미 처리된 사본은 전문 재해석 없이 메타만 읽는다."""
+    from service.requirement_overlay import identity,prepare
+    records={}
+    known=state.get('jobs',{})
+    for path in requirement_evidence_directory().glob('*.json'):
+        try:
+            if path.stat().st_size > 1024*1024:
+                continue
+            raw=json.loads(path.read_text(encoding='utf-8'))
+            key='|'.join(identity(raw))
+            if raw.get('error'):
+                continue
+            value=({k:raw[k] for k in ('procurement_type','notice_number','notice_order',
+                    'checked_at','overlay_schema','source_fingerprint') if k in raw}
+                   if key in known else prepare(raw,raw['procurement_type']))
+            if key not in records or value['checked_at'] > records[key]['checked_at']:
+                records[key]=value
+        except (OSError,ValueError,TypeError,KeyError,AttributeError):
+            continue
+    return list(records.values())
+
+
 def save_requirement_evidence(result: dict, procurement_type: str) -> dict:
     """원본 DB가 아닌 별도 공개 근거 저장소. 검사 시각별 사본을 원자적으로 남긴다."""
     from service.requirement_overlay import prepare
     value = prepare(result, procurement_type)
+    from service.requirement_display_audit import display_issues
+    if display_issues(value):
+        raise ValueError('조건 값·요약의 원문/HTML/장문 혼입. 저장하지 않고 표시를 재검토합니다.')
     allowed = {"schema", "notice_number", "notice_order", "checked_at", "evidence", "sources",
                "warnings", "api_license_rows", "api_region_rows", "procurement_type", "overlay_schema", "resolved",
-               "notice_flags", "notice_facts", "structured", "coverage", "attachment_inventory_complete", "source_fingerprint", "detail_fingerprint"}
+               "notice_flags", "notice_facts", "structured", "coverage", "attachment_inventory_complete", "source_fingerprint", "detail_fingerprint",
+               "public_page", "input_mode", "repair_review", "automation"}
     value = {k: v for k, v in value.items() if k in allowed}
     payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
     if len(payload.encode("utf-8")) > 1024 * 1024 or "serviceKey" in payload:
@@ -127,7 +164,8 @@ def save_requirement_evidence(result: dict, procurement_type: str) -> dict:
     directory = requirement_evidence_directory()
     directory.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    target = directory / (digest + ".json")
+    prefix = 'public_' if value.get('input_mode') == '저장 API 재사용' else ''
+    target = directory / (prefix + digest + ".json")
     if not target.exists():
         temporary = directory / (uuid.uuid4().hex + ".tmp")
         try:
@@ -135,9 +173,79 @@ def save_requirement_evidence(result: dict, procurement_type: str) -> dict:
             os.replace(temporary, target)
         finally:
             temporary.unlink(missing_ok=True)
+    _index_requirement_evidence(value, target.name)
     read_requirement_evidence.clear()
     read_api_requirement_evidence.clear()
     return value
+
+
+def _index_requirement_evidence(value, filename):
+    """공고별 최신 사본의 파일명만 별도 색인. 원문 중복 저장/DB 변경 없음."""
+    from service.requirement_overlay import identity
+    key = '|'.join(identity(value))
+    folder = requirement_evidence_directory() / 'latest'
+    folder.mkdir(parents=True,exist_ok=True)
+    path = folder / (hashlib.sha256(key.encode()).hexdigest()+'.json')
+    # UI와 별도 처리기가 같은 공고를 저장해도 오래된 결과가 최신을 덮지 않는다.
+    with path.with_suffix('.lock').open('a+b') as handle:
+        if handle.tell() == 0:
+            handle.write(b'0')
+            handle.flush()
+        handle.seek(0)
+        if os.name == 'nt':
+            import msvcrt
+            msvcrt.locking(handle.fileno(),msvcrt.LK_LOCK,1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(),fcntl.LOCK_EX)
+        try:
+            if path.exists():
+                try:
+                    previous=json.loads(path.read_text(encoding='utf-8'))
+                    if previous.get('checked_at','') > value['checked_at']:
+                        return
+                except (OSError,ValueError,TypeError,AttributeError):
+                    pass  # 사본은 별도 불변 파일이므로 손상된 색인만 재생성한다.
+            temporary=folder/(uuid.uuid4().hex+'.tmp')
+            try:
+                temporary.write_text(json.dumps(dict(file=filename,checked_at=value['checked_at'])),encoding='utf-8')
+                os.replace(temporary,path)
+            finally:
+                temporary.unlink(missing_ok=True)
+        finally:
+            if os.name == 'nt':
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(),msvcrt.LK_UNLCK,1)
+            else:
+                fcntl.flock(handle.fileno(),fcntl.LOCK_UN)
+
+
+def read_notice_requirement_evidence(procurement_type,number,order):
+    """상세/즐겨찾기는 해당 공고의 최신 사본 한 개만 읽고 해석한다."""
+    import re
+    from service.requirement_overlay import identity, fresh, prepare
+    key=identity(dict(procurement_type=procurement_type,notice_number=number,notice_order=order))
+    directory=requirement_evidence_directory()
+    index=directory/'latest'/(hashlib.sha256('|'.join(key).encode()).hexdigest()+'.json')
+    if index.exists():
+        try:
+            if index.stat().st_size > 2048:
+                raise ValueError('근거 색인 크기 오류')
+            pointer=json.loads(index.read_text(encoding='utf-8'))
+            filename=pointer.get('file','')
+            if not re.fullmatch(r'(?:public_)?[0-9a-f]{64}\.json',filename):
+                raise ValueError('근거 색인 파일명 오류')
+            path=directory/filename
+            if path.stat().st_size > 1024*1024:
+                raise ValueError('근거 사본 크기 오류')
+            raw=json.loads(path.read_text(encoding='utf-8'))
+            if identity(raw)!=key:
+                raise ValueError('근거 색인 공고 불일치')
+            return prepare(raw,procurement_type) if fresh(raw) else None
+        except (OSError,ValueError,TypeError,KeyError,AttributeError):
+            pass  # 잘못된 색인을 조건으로 쓰지 않는다. 기존 검증된 사본 읽기로 복구.
+    # 색인 도입 전 사본만 기존 60초 캐시로 읽는다. 새 저장은 모두 색인한다.
+    return next((r for r in read_requirement_evidence(legacy_only=True) if identity(r)==key),None)
 
 
 def read_requirement_failures():

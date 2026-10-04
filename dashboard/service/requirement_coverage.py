@@ -27,7 +27,7 @@ def coverage(result):
             gaps.append("문서 내부 이미지·읽기 범위 대조 필요")
     if any("한도" in w and "첨부" in w for w in result.get("warnings", [])):
         gaps.append("첨부 확인 한도 도달")
-    if not any(e.get("scope") == "참가자격 구역" for e in result.get("evidence", [])):
+    if not any(e.get("scope") in {"참가자격 구역", "공개 화면 구조화 조건"} for e in result.get("evidence", [])):
         gaps.append("참가자격 구역 미탐지")
     if any(e.get('excerpt_truncated') for e in result.get('evidence', [])):
         gaps.append("참가자격 발췌 길이 한도")

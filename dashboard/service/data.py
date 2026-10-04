@@ -297,10 +297,14 @@ def stored_notices() -> pd.DataFrame:
 def favorite_notices(ids) -> pd.DataFrame:
     """즐겨찾기 최대10건에만 저장 근거를 연결한다. 전체 공고 보완은 생략한다."""
     from service.requirement_overlay import overlay
-    from service.source import read_requirement_evidence
+    from service.source import read_notice_requirement_evidence
+    from service.requirement_overlay import identity
     selected = _stored_notices()
     selected = selected[selected.notice_id.isin(list(dict.fromkeys(ids))[:10])].drop_duplicates('notice_id')
-    return overlay(selected, read_requirement_evidence()) if len(selected) else selected
+    if not len(selected):
+        return selected
+    records=[read_notice_requirement_evidence(*identity(row)) for row in selected.to_dict('records')]
+    return overlay(selected,[r for r in records if r is not None])
 
 
 def _clear_notices():

@@ -44,7 +44,8 @@ def validate_state(state):
     return state
 
 
-def plan_work(frame, records, state, now, *, refresh_active=False, retry_failed=False, failures=()):
+def plan_work(frame, records, state, now, *, refresh_active=False, retry_failed=False, failures=(),
+              reprocess_incomplete=False, processing_version=''):
     """전체 과거 자료도 계획하되 실행은 최신/마감 전부터 한도 내 진행한다."""
     state = validate_state(state)
     latest = {}
@@ -93,16 +94,19 @@ def plan_work(frame, records, state, now, *, refresh_active=False, retry_failed=
         same = previous and previous.get('fingerprint') == digest
         failure = same and previous['phase'] in {'실패 중단', '처리 중단·확인 필요'}
         stale = record is not None and not fresh(record, instant)
+        upgrade = (same and not failure and reprocess_incomplete and previous.get('gaps')
+                   and processing_version and previous.get('processing_version') != processing_version)
         if same and failure and not retry_failed:
             counts['실패 보류·반복 안 함'] += 1
-        elif same and not (retry_failed and failure) and not (refresh_active and active and stale):
+        elif same and not upgrade and not (retry_failed and failure) and not (refresh_active and active and stale):
             counts['기존 입력 동일·조회 생략'] += 1
             if stale and active:
                 counts['마감 전 근거 시효 확인 필요'] += 1
         else:
-            reason = ('실패 명시적 재처리' if failure else '마감 전 근거 갱신' if same else
+            reason = ('실패 명시적 재처리' if failure else '읽기 보완 버전 적용' if upgrade else '마감 전 근거 갱신' if same else
                       '입력 변경' if previous or record else '신규 미조회')
             work.append({'notice_id': key, 'fingerprint': digest, 'reason': reason,
+                         'processing_version': processing_version,
                          'expected_title': _text(row.get('notice_name')).strip(),
                          'expected_close': _text(row.get('bid_close_date'))})
             counts[reason] += 1
@@ -125,35 +129,59 @@ def process_work(plan, checker, save_evidence, save_state, *, limit=5, progress=
         pt, number, order = job['notice_id'].split('|')
         state['jobs'][job['notice_id']] = {'fingerprint': job['fingerprint'], 'phase': '처리 중단·확인 필요'}
         save_state(state)  # 프로세스가 여기서 종료돼도 자동 중복 호출하지 않는다.
+        stage = '원문·첨부 읽기'
         try:
             result = checker(number, order, pt)
+            stage = '공고 번호·차수 대조'
             if identity(dict(result, procurement_type=pt)) != (pt, number, order):
                 raise ValueError('조회 결과의 공고 식별자 불일치')
             facts = result.get('notice_facts', {})
+            stage = '공고 제목 대조'
             if facts.get('bidNtceNm') and _text(facts['bidNtceNm']).strip() != job['expected_title']:
                 raise ValueError('조회 결과와 저장 공고 제목 불일치')
+            stage = '공고 마감일 대조'
             if facts.get('bidClseDt'):
                 expected = pd.to_datetime(job['expected_close'], errors='coerce')
                 observed = pd.to_datetime(facts['bidClseDt'], errors='coerce')
                 if pd.isna(expected) or pd.isna(observed) or expected != observed:
                     raise ValueError('조회 결과와 저장 공고 마감 불일치')
             result = dict(result, source_fingerprint=job['fingerprint'])
+            stage = '요건 표시 검사'
+            from service.requirement_display_audit import display_issues
+            if display_issues(result):
+                raise ValueError('조건 값/요약의 원문·HTML·장문 혼입. 저장 전 검토 필요')
+            stage = '검증 결과 저장'
             saved = save_evidence(result, pt)
         except Exception:
-            state['jobs'][job['notice_id']]['phase'] = '실패 중단'
+            state['jobs'][job['notice_id']].update(phase='실패 중단', failure_stage=stage)
             save_state(state)
-            progress({'stopped': '조회/저장 오류·재시도 보류', 'notice_id': job['notice_id']})
+            progress({'stopped': '조회/저장 오류·재시도 보류', 'notice_id': job['notice_id'], 'failure_stage': stage})
+            return processed, False
+        # 보호/미지원 등 알려진 스킵은 뒤 공고를 막지 않는다. 새 오류는 검증된
+        # 부분 근거를 보존하되 성공 체크포인트로 처리하지 않아 자동 반복을 막는다.
+        if any(item.get('action') == '새 오류·원인 점검'
+               for item in saved.get('automation', {}).get('source_skips', [])):
+            state['jobs'][job['notice_id']].update(phase='실패 중단',
+                failure_stage='새 첨부 읽기 오류·원인 점검', checked_at=saved['checked_at'])
+            save_state(state)
+            processed.append(saved)
+            progress({'stopped': '새 첨부 읽기 오류·부분 근거 보존·재시도 보류',
+                      'notice_id': job['notice_id'], 'failure_stage': '새 첨부 읽기 오류·원인 점검'})
             return processed, False
         details = coverage(saved)
         state['jobs'][job['notice_id']].update(phase='조회 처리', checked_at=saved['checked_at'],
-                                             coverage=details['status'], gaps=details['gaps'])
+                                             coverage=details['status'], gaps=details['gaps'],
+                                             processing_version=job.get('processing_version', ''))
         save_state(state)
         processed.append(saved)
         progress({'notice_id': job['notice_id'], 'coverage': details['status'], 'gaps': details['gaps'],
                   'resolved': {kind: saved['resolved'][kind]['review'] for kind in ('license', 'region')}})
-        useful = any(e.get('scope') in {'공식 API', '참가자격 구역'} and e.get('relevant', True)
+        useful = any(e.get('scope') in {'공식 API', '참가자격 구역', '공개 화면 구조화 조건'} and e.get('relevant', True)
                      for e in saved.get('evidence', []))
         useful |= any(saved['resolved'][kind]['review'] in {'공식 조건 확인', '공식 업종 제한 없음'} for kind in ('license','region'))
+        # 실제 공개 본문 읽기 성공/내용 없음과 접근 실패를 분리한다. 조건을 억지로 만들지 않는다.
+        useful |= any(s.get('name') == '원문 페이지' and s.get('status') == '동적 본문 확인'
+                      for s in saved.get('sources', []))
         if not useful:
             progress({'stopped': '새로 읽은 근거 없음·누락/읽기 실패 원인 점검 필요', 'notice_id': job['notice_id']})
             return processed, False

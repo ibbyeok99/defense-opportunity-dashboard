@@ -371,6 +371,7 @@ def apply(_page_title: str = ""):
 }}
 [class*="st-key-kpi_heading_"] {{ min-height: 48px; flex-wrap: nowrap !important; gap: .7rem; }}
 [class*="st-key-kpi_heading_"] [data-testid="stMarkdownContainer"] p {{ font-size: 1.045rem; font-weight: 600; line-height: 1.35; }}
+[class*="st-key-kpi_heading_"] [data-testid="stMarkdownContainer"] p {{ margin-block: 0; }}
 [class*="st-key-kpi_heading_"] [data-testid="stLayoutWrapper"] {{ min-width: 0; }}
 .dashboard-kpi-icon {{ width: 38px; height: 38px; border-radius: 10px; overflow: hidden; flex-shrink: 0; }}
 .dashboard-kpi-icon img {{ width: 38px; height: 38px; display: block; transform: scale(1.6); }}

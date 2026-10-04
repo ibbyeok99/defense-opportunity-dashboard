@@ -12,12 +12,53 @@ import time
 import zlib
 from io import BytesIO
 from pathlib import Path
+from html.parser import HTMLParser
 from zipfile import ZipFile
 from xml.etree import ElementTree as ET
 
 MAX_BYTES = 30 * 1024 * 1024
 MAX_EXPANDED = 64 * 1024 * 1024
 MAX_TEXT = 2_000_000
+MAX_ARCHIVE_DOCUMENTS = 20
+MAX_PDF_PAGES = 1000
+FAST_PDF_THRESHOLD = 300
+READ_FAILURES = {
+    'unsupported_format': '지원하지 않는 문서 형식',
+    'protected_document': '암호·배포용 문서',
+    'damaged_document': '손상된 문서·압축',
+    'processing_limit': '크기·페이지·처리 시간 한도',
+    'text_encoding': '본문 문자 인코딩 오류',
+    'access_response': '문서 대신 접근 제한 안내 응답',
+    'unsafe_document': '매크로·엔티티 등 안전 제한',
+    'empty_text': '읽을 수 있는 본문 없음',
+    'read_failure': '문서 해석 실패·원인 추가 확인 필요',
+}
+
+
+class DocumentReadError(ValueError):
+    def __init__(self, code):
+        self.code = code if code in READ_FAILURES else 'read_failure'
+        super().__init__('첨부 해석 실패: ' + READ_FAILURES[self.code] + '·수동 확인 필요')
+
+
+def document_error_code(error):
+    # 원시 예외/파일 경로/접속 주소를 저장하거나 사용자에게 전달하지 않는다.
+    if isinstance(error, UnicodeError):
+        return 'text_encoding'
+    message = str(error)
+    for code, pattern in (
+        ('access_response', '접근 제한 안내'),
+        ('protected_document', '암호|배포용'),
+        ('unsafe_document', '매크로|DTD|엔티티'),
+        ('processing_limit', '한도|제한을 초과|페이지를 초과'),
+        ('unsupported_format', '지원하지 않는|HWP 5 형식이 아닙니다'),
+        ('text_encoding', '문자 인코딩'),
+        ('damaged_document', '손상'),
+        ('empty_text', '읽을 수 있는 본문이 없습니다|본문을 읽지 못했습니다'),
+    ):
+        if re.search(pattern, message):
+            return code
+    return 'read_failure'
 PATTERNS = {
     "면허": re.compile(r"면허|업종\s*(?:코드|등록|제한)|(?:업체|업종)로?\s*등록|(?:건설업|공사업|용역업)\s*(?:등록|신고)|제조업.{0,30}허가"),
     "지역": re.compile(r"지역\s*(?:제한|조건)|참가\s*가능\s*지역|본점|본사(?!업)|주된\s*영업소|법인등기부상"),
@@ -28,6 +69,11 @@ QUALIFICATION = re.compile(
     r"(?:\s*(?:및|과)\s*(?:등록\s*사항|조건|요건|제한\s*사항))?"
     r"[ \t]*(?:(?P<trailing>\d{1,2})\s*\.)?[ \t]*(?:[:：][ \t]*|\n|$)")
 NEXT_HEADING = re.compile(r"\n\s*(?P<number>\d{1,2})[.)]\s*[^\n]{2,80}(?:\n|$)")
+QUALIFICATION_EN = re.compile(
+    r"(?:^|\n)[ \t]*(?:(?P<number>\d{1,2})[.)][ \t]*)?"
+    r"QUALIFICATIONS?\s+(?:OF|FOR)\s+BIDDERS?[ \t]*[:：]?[ \t]*(?:\n|$)", re.I)
+# 영문 DOCX는 자동 번호가 평문에 나오지 않는다. 대문자 구역 제목에서 끝낸다.
+NEXT_HEADING_EN = re.compile(r"\n[ \t]*(?:\d{1,2}[.)][ \t]*)?[A-Z][A-Z /&()\-]{4,100}[ \t]*(?:\n|$)")
 OTHER_REQUIREMENT = re.compile(r"중소\s*기업|소\s*기업|소상공인|직접\s*생산|제조\s*등록|제조물품|제조업|생산\s*능력|납품\s*실적|수행\s*실적|인증|확인서|지명\s*경쟁|지명한|공동\s*수급|공동\s*도급|공동\s*이행|분담\s*이행|보안|보증|참가\s*제한|제재|등록\s*마감|공고일\s*전일")
 
 
@@ -54,6 +100,18 @@ def evidence_from_text(text: str, location: str) -> list[dict]:
                          "scope": "참가자격 구역", "status": "검토용 근거 후보",
                          "excerpt_truncated": end - heading.start() > 6000,
                          "start": heading.start(), "end": end})
+    for heading in QUALIFICATION_EN.finditer(text):
+        number = heading.group('number')
+        candidates = [m.start() for m in NEXT_HEADING_EN.finditer(text, heading.end())]
+        if number:
+            candidates.extend(m.start() for m in NEXT_HEADING.finditer(text, heading.end())
+                              if int(m.group('number')) > int(number))
+        end = min(candidates) if candidates else len(text)
+        qualifications.append((heading.start(), end))
+        evidence.append(dict(kind='참가자격', location=location,
+            excerpt=_quote(text[heading.start():end])[:6000], scope='참가자격 구역',
+            status='영문 참가자격 구역·원문 검토', excerpt_truncated=end-heading.start()>6000,
+            start=heading.start(), end=end))
     for kind, pattern in PATTERNS.items():
         ends = -1
         for match in pattern.finditer(text):
@@ -117,10 +175,81 @@ def _hwp_section(data: bytes) -> str:
     return "\n".join(paragraphs)
 
 
+def _html_sections(blob: bytes):
+    """HTML 공고 첨부만 평문으로 읽는다. 스크립트·외부 자원은 실행하지 않는다."""
+    if len(blob) > 2 * 1024 * 1024:
+        raise ValueError("HTML 첨부 본문 크기 한도를 초과했습니다.")
+    if blob.startswith((b'\xff\xfe', b'\xfe\xff')):
+        text = blob.decode('utf-16', errors='strict')
+    else:
+        declared = re.search(br'charset\s*=\s*["\x27]?([a-zA-Z0-9_-]+)', blob[:8192], re.I)
+        codecs = {'utf-8': 'utf-8-sig', 'utf8': 'utf-8-sig', 'euc-kr': 'cp949',
+                  'cp949': 'cp949', 'ks_c_5601-1987': 'cp949', 'windows-1252': 'cp1252',
+                  'iso-8859-1': 'latin1'}
+        if declared:
+            encoding = codecs.get(declared.group(1).decode('ascii').lower())
+            if not encoding:
+                raise ValueError("HTML 첨부 문자 인코딩 확인이 필요합니다.")
+            text = blob.decode(encoding, errors='strict')
+        else:
+            try:
+                text = blob.decode('utf-8-sig', errors='strict')
+            except UnicodeDecodeError:
+                text = blob.decode('cp949', errors='strict')
+    if not re.search(r'<(?:html|head|body|div|p|table|h[1-6])\b', text[:8192], re.I):
+        raise ValueError("HTML 첨부 문서 구조를 확인할 수 없습니다.")
+    if re.search(r'<!ENTITY\b', text, re.I):
+        raise ValueError("HTML 첨부의 엔티티 선언은 처리하지 않습니다.")
+
+    class TextOnly(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.parts, self.hidden, self.length = [], [], 0
+
+        def handle_starttag(self, tag, attrs):
+            if tag in {'script', 'style', 'noscript', 'iframe', 'object', 'template'}:
+                self.hidden.append(tag)
+            if not self.hidden and tag in {'p', 'div', 'br', 'tr', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}:
+                self.parts.append('\n')
+            elif not self.hidden and tag in {'td', 'th'}:
+                self.parts.append(' ')
+
+        def handle_endtag(self, tag):
+            if self.hidden:
+                if tag == self.hidden[-1]:
+                    self.hidden.pop()
+                return
+            if tag in {'p', 'div', 'tr', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}:
+                self.parts.append('\n')
+
+        def handle_data(self, value):
+            if not self.hidden:
+                self.length += len(value)
+                if self.length > MAX_TEXT:
+                    raise ValueError("HTML 첨부 텍스트 한도를 초과했습니다.")
+                self.parts.append(value)
+
+    parser = TextOnly()
+    parser.feed(text)
+    parser.close()
+    content = '\n'.join(_quote(line) for line in ''.join(parser.parts).splitlines() if line.strip())
+    if not content:
+        raise ValueError("HTML 첨부에 읽을 수 있는 본문이 없습니다.")
+    if re.fullmatch(r'(?:로그인|login|sign in)', content, re.I) or re.search(r'(?:access denied|request rejected|request blocked|captcha|접근이?\s*(?:차단|거부)|로그인이?\s*필요)', content, re.I):
+        raise ValueError("첨부 대신 접근 제한 안내가 반환되었습니다. 우회하지 않고 수동 확인합니다.")
+    sections = [('HTML 본문', content)]
+    if re.search(r'<img\b', text, re.I):
+        sections.append(('HTML 내부 이미지 · 미확인·수동 대조 필요', ''))
+    return 'HTML', sections
+
+
 def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> tuple[str, list[tuple[str, str]]]:
     """형식은 확장자가 아닌 매직·내부 구조로 확인한다. HWP(X)는 구역, PDF는 페이지."""
     if len(blob) > MAX_BYTES:
         raise ValueError("첨부 파일은 30 MiB까지 확인합니다.")
+    # 실제 공개 ZIP의 .hwp 3개에서 확인한 암호화 헤더. 보호 우회 없음.
+    if blob.startswith((b'\x9b DRMONE', b'<DOCUMENTSAFER_0>\x00')):
+        raise DocumentReadError('protected_document')
     sections = []
     if blob.startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff')):
         from PIL import Image
@@ -134,15 +263,31 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
     if blob.startswith(b"%PDF-"):
         from pypdf import PdfReader
         reader = PdfReader(BytesIO(blob), strict=False)
-        if reader.is_encrypted or len(reader.pages) > 300:
-            raise ValueError("암호화되거나 300페이지를 초과한 PDF는 수동 확인이 필요합니다.")
+        if reader.is_encrypted:
+            raise ValueError("암호화 PDF는 수동 확인이 필요합니다.")
+        if len(reader.pages) > MAX_PDF_PAGES:
+            raise ValueError(f"{MAX_PDF_PAGES}페이지를 초과한 PDF는 수동 확인이 필요합니다.")
         ocr_deadline = time.monotonic() + 14
         ocr_count = 0
+        decoded_bytes = 0
         for i, page in enumerate(reader.pages, 1):
             content = page.get_contents()
-            if content and len(content.get_data()) > 8 * 1024 * 1024:
-                raise ValueError("PDF 페이지 처리 한도를 초과했습니다.")
-            text = page.extract_text() or ""
+            if content is not None:
+                size = len(content.get_data())
+                if size > 8 * 1024 * 1024:
+                    raise ValueError("PDF 페이지 처리 한도를 초과했습니다.")
+                decoded_bytes += size
+                if decoded_bytes > MAX_EXPANDED:
+                    raise ValueError("PDF 전체 본문 압축 해제 한도를 초과했습니다.")
+        # 긴 PDF는 기존 문자 추출이 실제 640쪽에서65초를 초과했다.
+        # 압축 해제 한도를 먼저 검사한 뒤 이미 OCR에 쓰는 PDFium으로만 텍스트를 읽는다.
+        fast_texts = _long_pdf_texts(blob, len(reader.pages)) if len(reader.pages) > FAST_PDF_THRESHOLD else None
+        text_chars = 0
+        for i, page in enumerate(reader.pages, 1):
+            text = fast_texts[i-1] if fast_texts is not None else (page.extract_text() or "")
+            text_chars += len(text)
+            if text_chars > MAX_TEXT:
+                raise ValueError("PDF 전체 텍스트 한도를 초과했습니다.")
             location = f"{i}페이지"
             if len(re.sub(r"\s", "", text)) < 40:
                 from service.requirement_ocr import render_page, recognize, MAX_OCR_PAGES
@@ -192,14 +337,25 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
                     raise ValueError("중첩 ZIP은 수동 확인이 필요합니다.")
                 if len({e.filename for e in entries}) != len(entries):
                     raise ValueError("중복 이름이 있는 ZIP은 수동 확인이 필요합니다.")
-                documents = [e for e in entries if not e.is_dir() and re.search(r"\.(?:pdf|hwp|hwpx|docx|xlsx|xls|png|jpe?g)$", e.filename, re.I)]
-                if not documents or len(documents) > 10:
-                    raise ValueError("ZIP 안의 지원 문서는 1~10개만 확인합니다.")
-                if any(e.flag_bits & 1 or e.file_size > MAX_BYTES for e in documents):
-                    raise ValueError("암호화되거나 크기 한도를 넘은 ZIP 문서입니다.")
+                documents = [e for e in entries if not e.is_dir() and re.search(r"\.(?:pdf|hwp|hwpx|docx|xlsx|xls|png|jpe?g|html?)$", e.filename, re.I)]
+                if not documents:
+                    raise ValueError("지원하지 않는 ZIP 문서 구성입니다. 내부 파일 형식 확인이 필요합니다.")
+                # 규격서가 많아도 원본 공고문까지 전부 거부하지 않는다.
+                priority = re.compile(r'공고|입찰|invitation|\bbid\b|\bifb\b', re.I)
+                documents.sort(key=lambda entry: not bool(priority.search(entry.filename)))
+                pending = documents[MAX_ARCHIVE_DOCUMENTS:]
+                documents = documents[:MAX_ARCHIVE_DOCUMENTS]
+                if pending and _inventory is None:
+                    raise ValueError('ZIP 문서 수 한도 초과·미열람 목록을 제공하는 추출 경로로 확인해야 합니다.')
+                if any(e.flag_bits & 1 for e in documents):
+                    raise ValueError("암호화 ZIP 문서는 수동 확인이 필요합니다.")
+                if any(e.file_size > MAX_BYTES for e in documents):
+                    raise ValueError("ZIP 내부 문서 크기 한도를 초과했습니다.")
                 inventory = _inventory if _inventory is not None else []
+                for entry in pending:
+                    inventory.append(dict(name=entry.filename, status='미열람·ZIP 문서 수 한도', format=''))
                 for entry in entries:
-                    if not entry.is_dir() and entry not in documents:
+                    if not entry.is_dir() and entry not in documents and entry not in pending:
                         inventory.append(dict(name=entry.filename, status="미지원·미열람", format=""))
                 for i, entry in enumerate(documents, 1):
                     try:
@@ -210,12 +366,13 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
                         if any(re.search(r"OCR|미확인|미열람|한도", location) for location, _ in child):
                             status = "읽기 일부 완료·OCR/내부 이미지 대조 필요"
                         inventory.append(dict(name=entry.filename, format=child_format, status=status))
-                    except ValueError:
+                    except ValueError as error:
                         if _inventory is None:
                             raise  # 기존 document_sections 직접 호출의 엄격 검사 유지.
-                        inventory.append(dict(name=entry.filename, format="", status="읽기 실패·수동 확인 필요"))
+                        inventory.append(dict(name=entry.filename, format="", status="읽기 실패·수동 확인 필요",
+                                              error_code=document_error_code(error)))
                         sections.append((f"파일 {i} · {entry.filename} › 읽기 실패·미확인", ""))
-                if not any(text.strip() for _, text in sections):
+                if not any(text.strip() for _, text in sections) and _inventory is None:
                     raise ValueError("ZIP 안의 지원 문서 본문을 읽지 못했습니다.")
                 return "ZIP", sections
             for name in names:
@@ -274,7 +431,10 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
                     raise ValueError("HWP 해제 한도를 초과했습니다.")
                 sections.append(("/".join(name), _hwp_section(data)))
         return "HWP", sections
-    raise ValueError("지원하지 않는 첨부 형식입니다. PDF·HWP 5·HWPX·DOCX·XLS(X)·PNG/JPEG만 확인합니다.")
+    # 바이너리 문서 안의 HTML 문자열을 문서 형식으로 오인하지 않는다.
+    if re.search(br'<(?:html|head|body|div|p|table|h[1-6])\b', blob[:8192], re.I) or blob.startswith((b'\xff\xfe', b'\xfe\xff')):
+        return _html_sections(blob)
+    raise ValueError("지원하지 않는 첨부 형식입니다. PDF·HWP 5·HWPX·DOCX·XLS(X)·PNG/JPEG·HTML만 확인합니다.")
 
 
 def _xlsx_sections(archive):
@@ -360,6 +520,32 @@ def _paragraph_text(paragraph) -> str:
     return "".join(parts)
 
 
+def _long_pdf_texts(blob, expected_pages):
+    """공식 PDFium Unicode API. 페이지 순서 보존·스크립트/폼 실행 없음."""
+    import pypdfium2 as pdfium
+    texts, total = [], 0
+    with pdfium.PdfDocument(blob) as document:
+        if len(document) != expected_pages:
+            raise ValueError('PDF 읽기 간 페이지 수 불일치·수동 확인 필요')
+        for index in range(expected_pages):
+            page = document[index]
+            try:
+                textpage = page.get_textpage()
+                try:
+                    if textpage.count_chars() > MAX_TEXT - total:
+                        raise ValueError('PDF 전체 텍스트 한도를 초과했습니다.')
+                    text = textpage.get_text_bounded(errors='strict').replace('\r\n', '\n')
+                finally:
+                    textpage.close()
+            finally:
+                page.close()
+            total += len(text)
+            if total > MAX_TEXT:
+                raise ValueError('PDF 전체 텍스트 한도를 초과했습니다.')
+            texts.append(text)
+    return texts
+
+
 def extract_document(blob: bytes) -> dict:
     inventory = []
     fmt, sections = document_sections(blob, _inventory=inventory) if blob.startswith(b'PK') else document_sections(blob)
@@ -381,6 +567,10 @@ def extract_document(blob: bytes) -> dict:
             "status": "근거 후보 발견" if evidence else "텍스트 근거 미발견",
             "text_available": any(text.strip() for _, text in sections),
             "document_gaps": [location for location, _ in sections if re.search(r"미확인|미열람|한도|읽기 실패", location)]}
+    # 제목에서 취소 공고임이 확인되어도 API 현재 상태/이전 차수 조건을 추정하지 않는다.
+    if any(re.search(r'^.{0,100}(?:취소\s*공고|cancellation\s+(?:of\s+)?(?:bid\s+)?notice)\s*$', line, re.I)
+           for _, text in sections for line in text.splitlines()[:5]):
+        result['document_notices'] = ['취소 공고 제목 확인·현재 공고 상태 별도 대조 필요']
     if fmt == 'ZIP':
         result.update(archive_inventory=inventory,
                       archive_complete=bool(inventory) and all(item['status'] == '읽기 완료' for item in inventory))
@@ -412,17 +602,25 @@ def extract_bounded(blob: bytes, timeout: float = 20) -> dict:
         raise ValueError("첨부 크기 제한을 초과했습니다.")
     # multiprocessing spawn은 Streamlit/AppTest의 __main__을 재실행할 수 있다.
     # 고정된 파서만 별도 Python에서 실행하며 첨부는 stdin 데이터로 전달한다.
-    script = ("import sys,json; sys.path.insert(0,sys.argv[1]); "
-              "from service.requirement_documents import extract_document; "
-              "result=extract_document(sys.stdin.buffer.read()); "
-              "sys.stdout.buffer.write(json.dumps(result,ensure_ascii=False).encode('utf-8'))")
+    script = ("import sys,json\nsys.path.insert(0,sys.argv[1])\n"
+              "from service.requirement_documents import extract_document,document_error_code\n"
+              "try:\n result=extract_document(sys.stdin.buffer.read())\n"
+              "except Exception as error:\n result={'document_error':document_error_code(error)}\n"
+              # 파서의 결과를 ASCII JSON으로 전달하고 부모에서 원래 문자를 복구한다.
+              # Windows 파이프 문자 인코딩 오류로 읽은 근거 전체가 버려지는 것을 막는다.
+              "sys.stdout.buffer.write(json.dumps(result,ensure_ascii=True).encode('ascii'))")
     try:
         response = subprocess.run([sys.executable, "-c", script, str(Path(__file__).resolve().parents[1])],
                                   input=blob, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                   timeout=timeout, check=True,
                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        return json.loads(response.stdout)
+        result = json.loads(response.stdout)
+        if 'document_error' in result:
+            raise DocumentReadError(result['document_error'])
+        return result
+    except DocumentReadError:
+        raise
     except subprocess.TimeoutExpired:
-        raise ValueError("첨부 분석 시간 제한을 초과했습니다. 수동 확인이 필요합니다.") from None
+        raise DocumentReadError('processing_limit') from None
     except Exception:
-        raise ValueError("첨부 해석 실패: 암호·손상·미지원 형식 또는 처리 한도. 원문 수동 확인이 필요합니다.") from None
+        raise DocumentReadError('read_failure') from None

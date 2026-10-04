@@ -1,57 +1,105 @@
-# 국방조달 기회 찾기
+# Frontline Data — 강사님 제출본
 
-작성: Codex · 2026-10-02
+작성: Codex, 2026-10-04
 
-## 배포 재점검 (Codex · 2026-10-04)
+## 1. 설치 없이 대시보드 확인
 
-- 최신 고객 화면/문구/상세/검색/비교/한글CSV/요건 표시 동기화. 관리자 화면·운영 상태 조회·AWS 코드 제외.
-- 공개 일정·금액·첨부 필드는 인증 읽기 API로 전달한다. 원본 전체 부가 JSON·알 수 없는 필드는 제외한다.
-- Linux Cloud가 실제 사용한 pyarrow24.0.0에 버전 고정.25.0.1은 Cloud 로그에서 충돌 대상으로 감지돼 자동 교체되었다.
-- 실제 loopback 읽기API 고객 홈·6페이지·상세 검사 통과, 공고29,198건. 이 검사는 외부Cloud 정상 연결을 대신하지 않는다.
-- Cloud Secrets는 기존 데이터 읽기API 주소/토큰만 사용한다. 나라장터 조회키·AWS·DB·관리자 자격증명은 포함하지 않는다. 따라서 Cloud의 원문/첨부 자동 확인은 별도 연결 전까지 사용할 수 없다. 저장된 요건·상세정보와 원문 링크는 제공한다.
-- 전체 원문/OCR 검토·신규 공고 상시 처리·DB 버전/소유 범위 대조는 미완료다. 제한 미확인을 제한 없음으로 바꾸지 않는다.
-- 최종 보정 후 전체604개 통과. 실제 배포 사본 목록/상세 등록마감·금액/모바일 사이드바 점검 통과. 외부Cloud 최신 연결·PDF 실제 파일 수신은 아직 미검증이다.
-- 사용자 고객 코드 업로드·기존 인증API 연결 복구 승인(2026-10-04). 연결 복구 실행은 보안 검토의 목적지·공개 데이터 범위 확인 요구로 차단돼 별도 명시 확인 대기. 비공개 공유·기존 인증 유지, 관리자·비밀값·실데이터는 업로드하지 않는다.
+- [대시보드 열기](https://defense-opportunity-dashboard-doadt6mmhedzmntzqsg8oj.streamlit.app/)
+- 첫 화면에서 **대시보드 바로 가기 →**를 누릅니다.
+- 공고 검색 → 상세 확인, 분야별 입찰 분석, 시장 동향, 즐겨찾기를 확인할 수 있습니다.
+- 휴면 상태에서 시작하면 준비 시간이 걸릴 수 있습니다.
+- 현재 사이트와 Git은 비공개입니다. 강사님 계정의 사이트/Git 열람 권한을 전달 전에 확인해야 합니다. 공개 전환은 아직 하지 않았습니다.
+- API PC·DB PC의 전원/네트워크, API 서버·HTTPS 연결이 유지되어야 실제 데이터를 조회할 수 있습니다. 클라우드 배포가 이 의존성을 제거하지는 않습니다.
 
-Streamlit Community Cloud 고객 화면 전용 저장소.
+## 2. 소스코드 확인
 
-## 배포
+- [고객용 Git 저장소](https://github.com/ibbyeok99/defense-opportunity-dashboard)
+- `소스코드_안내.md`: 폴더 구조, 모듈 용도, 각 소스 파일의 Git 링크.
+- `RELEASE_MANIFEST.json`: 이 ZIP의 코드 기준 커밋과 파일별 SHA-256.
+- 고객 화면만 포함합니다. 관리자·수집기·API 서버·DB 원본·조회 근거 사본·실제 인증키는 포함하지 않습니다.
+- 기존 과거 ZIP 대신 이 제출본을 사용합니다.
 
-- Repository: `ibbyeok99/defense-opportunity-dashboard`
-- Branch: `codex/community-cloud`
-- Main file path: `dashboard/streamlit_app.py`
-- Python: `3.14`
-- Secrets: `dashboard/.streamlit/secrets.community.example.toml` 형식에 실제 API 주소·인증키만 입력.
-- DB 암호·AWS 자격증명·관리자 암호는 Cloud/Git에 입력하지 않는다.
-- API·DB PC와 HTTPS 터널을 계속 실행해야 한다. 임시 터널 주소가 바뀌면 Cloud Secrets URL도 변경한다.
+## 3. 내 PC에서 직접 실행 — Windows
 
-## 수정 반영
+### 설치 조건
 
-- 작업 원본: `C:\frontline_data\dashboard`.
-- 배포 사본: `C:\frontline_data\deployment\community-cloud`.
-- 원본만 수정하거나 팀 저장소 `DAUN`에만 push하면 이 Cloud 앱은 갱신되지 않는다.
-- 변경한 고객 화면 파일을 배포 사본에 동기화하고 검증한 뒤 이 저장소의 `codex/community-cloud`에 commit/push한다.
-- 코드·아이콘·테마·고객용 의존성만 포함한다. 실데이터·비밀값·관리자/S3/AWS·팀 저장소의 과거 커밋은 포함하지 않는다.
+- Python **3.14 64비트**. 다른 버전은 이 제출본의 검증 대상이 아닙니다.
+- [Python 공식 설치 안내](https://www.python.org/downloads/windows/)
+- 최초 패키지 설치와 데이터 조회에 인터넷이 필요합니다.
+- Anaconda는 필요 없습니다. 제출 폴더에 전용 `.venv`를 만듭니다.
+- 압축 파일 안에서 실행하지 말고 전체를 새 폴더에 해제합니다. 폴더 구조를 유지합니다.
 
-## 원천·범위
+### 최초 설치
 
-- `SOURCE_SNAPSHOT.json`에 최초 가져온 커밋과 코드 파일 SHA256을 기록한다.
-- 데이터는 인증 HTTPS 읽기 API를 통해 기존 로컬 MySQL에서 조회한다. 데이터 사본을 Git에 저장하지 않는다.
-- 관리자 화면은 API 모드에서 등록하지 않는다. 로컬 기관 판정은 기존 프로젝트에서만 수행한다.
-- 공개 화면 설정과 비공개 코드 저장소 설정은 별개다.
+1. ZIP 전체 해제.
+2. `setup.cmd` 실행. Python 3.14로 `.venv`를 만들고 `dashboard/requirements.txt`의 패키지를 설치합니다.
+3. 설치 실패 시 창의 오류를 확인합니다. `py -3.14 --version`으로 Python을 확인합니다. `py`가 없는 설치 환경에서는 `python --version`을 확인하며 Python 3.14가 PATH에 있어야 합니다.
 
-## 고객 화면 갱신 (Codex · 2026-10-02)
+같은 작업의 직접 명령:
 
-- 최신 홈 영상·검정 로고, 대시보드 배경·흰 로고, 제목/부제/메뉴 배치와 카드 복원.
-- 상세 모달·즐겨찾기 비교 표/상세 이동·시장 계약기관 집계/유형 그래프·필터 기본값/초기화 보정.
-- 공식 분류명/기관명 표시용 공개 코드 사전만 포함. 공고·계약 원본 데이터, 기관 대장과 API 키는 저장하지 않는다.
-- 관리자 로그인 함수·화면 등록·진입 버튼은 전용 진입 파일에서 제거. 로컬 관리자 구현은 변경하지 않는다.
-- 앱 주소·Cloud Secrets·비공개 공유 설정은 유지한다. 갱신은 전용 브랜치 업로드로 반영한다.
+```powershell
+py -3.14 start_dashboard.py --setup
+```
 
-## 최종 고객 사본 준비 (Codex · 2026-10-03)
+`py`가 없고 `python --version`이 3.14라면 `python start_dashboard.py --setup`으로 설치할 수 있습니다. 실행기는 다른 Python 버전에서 설치를 중단합니다.
 
-- 도움말 최상위 표시·최신 제목/사이드바/필터/표/그래프·본문 최소 길이 동기화. 사이드바 로고는 제거한다.
-- 공식 외자 품명39개 보완·계약기관과 분류별 계약의 집계 범위 안내. 코드와 원본 지표는 바꾸지 않는다.
-- 원문/첨부 읽기·한국어 OCR·문맥 근거 모듈과 모델 포함. OCR 결과를 자동 적격으로 확정하지 않는다.
-- fonts-nanum과 Tesseract 한국어/영어 엔진 패키지 동시 유지. 공식 API 키·조회 근거 사본은 포함하지 않는다.
-- 고객 홈/6페이지/상세를 localhost 읽기 API로 검증. 기존 공개 터널 도메인 DNS 실패로 Cloud 연결은 미확인. 업로드 전 검증과 Cloud 실제 실행 성공은 구분한다.
+가상환경 수동 활성화(선택): `.venv\Scripts\Activate.ps1`. 실행기는 활성화 없이도 전용 환경을 사용합니다. PowerShell 실행 정책을 바꿀 필요는 없습니다.
+
+### 로컬 연결 설정
+
+1. `dashboard/.streamlit/secrets.community.example.toml`을 같은 폴더의 `secrets.toml`로 복사합니다.
+2. 제출자에게 **HTTPS API 주소와 API 인증키를 별도 안전한 경로로 전달받습니다**. 이 ZIP과 공개 Git에는 실제 값을 넣지 않습니다.
+3. 아래 두 예시값만 바꿉니다. DB 비밀번호나 학원 VPN은 필요 없습니다.
+
+```toml
+[dashboard]
+data_source = "api"
+
+[data_api]
+url = "https://YOUR-API-HOST"
+token = "REPLACE_WITH_RANDOM_TOKEN_AT_LEAST_32_CHARACTERS"
+```
+
+설정·설치 확인과 API 연결 확인:
+
+```powershell
+.venv\Scripts\python.exe start_dashboard.py --check
+.venv\Scripts\python.exe start_dashboard.py --check-api
+```
+
+`--check`는 설정 서식만 검사합니다. 실제 네트워크 연결 성공을 뜻하지 않습니다.
+
+### 실행·종료
+
+- `run_dashboard.cmd` 실행 → 브라우저에서 `http://127.0.0.1:8501` 열기.
+- 실행 창은 유지합니다. 종료하려면 실행 창에서 `Ctrl+C`.
+- 8501 포트를 다른 앱이 사용하면 `run_dashboard.cmd --port 8505` → `http://127.0.0.1:8505`.
+- 코드 수정 뒤 저장하면 화면을 다시 확인할 수 있습니다. Git에 `secrets.toml`을 올리지 않습니다.
+
+### 주요 설치 패키지
+
+| 역할 | 패키지 |
+|---|---|
+| 화면 | Streamlit |
+| 데이터·전송 | pandas, pyarrow, requests |
+| 그래프 | Plotly, Altair, matplotlib |
+| PDF | pypdf, pypdfium2 |
+| 문서 형식 처리 | openpyxl, xlrd, olefile |
+| 시간대 | tzdata |
+
+정확한 버전은 `dashboard/requirements.txt`를 따릅니다. MySQL 드라이버·SQLAlchemy·AWS 인증은 이 고객용 API 패키지의 필수 설치 항목이 아닙니다.
+
+## 4. 다른 운영체제
+
+macOS/Linux에서도 Python 3.14로 `python3 start_dashboard.py --setup` 후 `.venv/bin/python start_dashboard.py`를 사용합니다. 이 제출 작업의 실제 설치 검증은 Windows 기준이며 다른 운영체제의 신규 설치는 별도 검증이 필요합니다.
+
+## 5. 기능 범위와 오류 대응
+
+- 저장된 공고·면허/지역·일정/금액·첨부 링크를 표시합니다. `상세 확인`은 제한 없음이나 참가 가능을 뜻하지 않습니다.
+- 상세/즐겨찾기에서 공개 원문·저장된 첨부 주소를 비동기로 확인합니다. 먼저 저장 정보를 표시하고 확인 중인 요건은 ‘찾는 중…’으로 표시합니다. 공식 API 보충 조회는 별도 조회키가 필요합니다. 이 제출본에는 키·조회 사본이 없으며 전체 공고 확인 완료를 보장하지 않습니다.
+- OCR 모델은 포함하지만 Tesseract 엔진은 별도입니다. 기본 저장 정보 조회에는 필요 없으며 설치 조건·라이선스는 `dashboard/assets/ocr/README.md`를 확인합니다.
+- API 오류: 제출자 PC의 API/HTTPS 연결과 DB PC 상태 확인 요청. 임시 HTTPS 주소 변경 시 `secrets.toml` 주소 갱신.
+- 모듈 누락: ZIP 전체 해제 여부 확인 후 `setup.cmd` 다시 실행.
+- Git·사이트 접근 제한: 제출자에게 공개 전환 상태 또는 권한 확인 요청.
+- 신규·변경 공고의 10분 감시 예약은 제출자의 PC에 등록했습니다. PC·DB·사용자 로그인 상태가 필요하며, 로그아웃/전원 종료/임시 HTTPS 주소 변경은 자동 복구하지 않습니다. 이 PC의 저장 근거를 사이트에 전달하는 공유 경로는 추가 승인 전까지 미연결입니다.
+- 전체 원문·ZIP·OCR 대조 및 실제 브라우저 다운로드 파일 수신은 완료 범위와 구분합니다. 제출 검증 결과는 `검증결과.md`를 확인합니다.

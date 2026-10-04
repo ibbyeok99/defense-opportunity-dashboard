@@ -68,7 +68,7 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
             st.caption("확인 결과는 요건 표·검색에 반영됩니다. 24시간이 지나면 다시 확인합니다.")
         for kind in ("면허", "지역", "참가자격", "기타 참가조건"):
             items = [e for e in result["evidence"] if e["kind"] == kind and e.get("relevant", True)]
-            direct = [e for e in items if e.get("scope") in {"공식 API", "참가자격 구역"}]
+            direct = [e for e in items if e.get("scope") in {"공식 API", "참가자격 구역", "공개 화면 구조화 조건"}]
             related = [e for e in items if e not in direct]
             if kind in {"참가자격", "기타 참가조건"} and not items:
                 continue
@@ -91,7 +91,8 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
         with st.expander("출처·읽기 결과"):
             for source in result["sources"]:
                 st.markdown(f"**{evidence_label(source['name'])}** — {evidence_label(source['status'])}")
-                st.link_button("공식 출처 열기", source["url"], icon=":material/open_in_new:")
+                if source.get("url"):
+                    st.link_button("공식 출처 열기", source["url"], icon=":material/open_in_new:")
                 for member in source.get('archive_inventory', []):
                     st.text(f"압축파일 내부: {member['name']} — {evidence_label(member['status'])}")
                 for gap in source.get('document_gaps', []):

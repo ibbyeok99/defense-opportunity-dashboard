@@ -52,10 +52,19 @@ def fresh(record, now=None) -> bool:
 
 def condition(result, kind):
     """API 구조화 값, 명시적 없음, 해석할 문장을 각각 구분한다."""
+    if any(re.search(r'제목 불일치|식별자.*불일치|공고번호·차수 불일치', str(s.get('reason', '')))
+           for s in result.get('sources', [])):
+        return dict(state='미확인', values='', review='근거 충돌', manual=True,
+                    quote='공개 원문과 저장 공고의 식별 정보가 다릅니다. 이전 버전의 조건을 적용하지 않습니다.')
     label = {"license": "면허", "region": "지역"}[kind]
     field = {"license": "lcnsLmtNm", "region": "prtcptPsblRgnNm"}[kind]
     rows = result.get(f"api_{kind}_rows", [])
     values = list(dict.fromkeys(v for r in rows for v in usable_values(r.get(field))))
+    page = result.get('public_page', {})
+    page_rows = page.get('limits', {}).get(kind, []) if isinstance(page, dict) else []
+    page_values = list(dict.fromkeys((r['name'] + '/' + r['code'] if kind == 'license'
+                                     and re.fullmatch(r'\d{4}', r.get('code', '')) else r['name'])
+                                   for r in page_rows if usable_values(r.get('name', ''))))
     direct = [e for e in result.get("evidence", []) if e.get("scope") == "참가자격 구역"
               and e.get("method") != "ocr" and e.get("kind") in {label, "참가자격"}]
     # 저장된 과거 후보도 현재 추출 규칙으로 재검증한다. '본사업'의 '본사'는 지역 근거가 아니다.
@@ -66,10 +75,20 @@ def condition(result, kind):
     absence = bool(NONE_PATTERNS[kind].search(text))
     industry_flag = str(result.get("notice_flags", {}).get("indstrytyLmtYn", "")).strip().upper() if kind == "license" else ""
     # 제한 없음과 구조화 조건이 충돌하면 어떤 값도 자동 선택하지 않는다.
-    if (absence or industry_flag == "N") and values:
+    if (absence or industry_flag == "N") and (values or page_values):
         return dict(state="미확인", values="", review="근거 충돌", manual=True, quote=text[:2500])
     if values:
+        api_codes = {m for v in values for m in re.findall(r'(?<!\d)\d{4}(?!\d)', v)}
+        page_codes = {r['code'] for r in page_rows if re.fullmatch(r'\d{4}', r.get('code', ''))}
+        if api_codes and page_codes and api_codes != page_codes:
+            return dict(state='미확인', values='', review='근거 충돌', manual=True,
+                        quote='API 업종과 공개 원문 제한 표의 업종 코드가 다릅니다.')
         return dict(state="제한있음", values=" | ".join(values), review="공식 조건 확인", manual=False, quote=text[:2500])
+    if page_values:
+        if absence:
+            return dict(state='미확인', values='', review='근거 충돌', manual=True, quote=text[:2500])
+        return dict(state='제한있음', values=' | '.join(page_values), review='문서 제한 조건·원문 검토',
+                    manual=True, quote=text[:2500] or '공개 원문 제한 표: ' + ' | '.join(page_values))
     if industry_flag == "N" and not quotes:
         return dict(state="미확인", values="", review="공식 업종 제한 없음", manual=True,
                     quote="공식 공고 indstrytyLmtYn=N. 업종 제한 표시이며 다른 면허·참가자격의 제한 없음은 확정하지 않습니다.")
@@ -96,6 +115,12 @@ def condition(result, kind):
                 v for c in clauses for v in c['allowed_regions']))
         documented = (bool(candidates) and not absence and not negated
                       and not re.search(r"예시|우대|가점|아닌|아니|않", text))
+        if kind == 'license' and not candidates and not absence:
+            from service.requirement_structure import PARTICIPATION_REGISTRATION
+            # 일반/외자 참가등록을 면허로 만들지 않는다. 공고 전체 면허 없음도 확정하지 않는다.
+            if PARTICIPATION_REGISTRATION.search(qualification or text) and not re.search(r'면허|업종\s*(?:코드|번호|제한)', text):
+                return dict(state='미확인', values='', review='면허 근거 미탐지·참가등록 별도 확인',
+                            manual=True, quote=text[:2500])
         return dict(state="제한있음" if documented else "미확인", values=" | ".join(candidates),
                     review="문서 제한 조건·원문 검토" if documented else "문서 요건 후보·원문 검토" if candidates else "근거 확인·해석 필요",
                     manual=True, quote=text[:2500])
@@ -118,15 +143,18 @@ def prepare(result, procurement_type):
         raise ValueError("실패한 조회는 보완값으로 저장하지 않습니다")
     from service.requirement_summary import clean_excerpt
     displayed = [dict(e, display_excerpt=clean_excerpt(e.get('excerpt', '')),
-                     relevant=(e.get("kind") not in PATTERNS or e.get("scope") == "공식 API"
+                     relevant=(e.get("kind") not in PATTERNS or e.get("scope") in {"공식 API", "공개 화면 구조화 조건"}
                                    or bool(PATTERNS[e["kind"]].search(e.get("excerpt", "")))))
                  for e in result.get("evidence", [])]
     from service.requirement_structure import structure_requirements
     from service.requirement_coverage import coverage
-    return dict(result, evidence=displayed, procurement_type=procurement_type, overlay_schema=SCHEMA,
+    prepared = dict(result, evidence=displayed, procurement_type=procurement_type, overlay_schema=SCHEMA,
                 coverage=coverage(dict(result, evidence=displayed)),
                 structured=structure_requirements(dict(result, evidence=displayed)),
                 resolved={kind: condition(result, kind) for kind in ("license", "region")})
+    from service.requirement_automation import classify_automation
+    prepared['automation'] = classify_automation(prepared)
+    return prepared
 
 
 def overlay(frame, records, now=None):
@@ -187,6 +215,8 @@ def overlay(frame, records, now=None):
                 review = "근거 충돌"
                 out.at[index, f"{kind}_requires_review"] = True
             out.at[index, f"{kind}_review_status"] = review
+            if review == '근거 충돌':
+                out.at[index, f"{kind}_requires_review"] = True
             out.at[index, f"{kind}_evidence_quote"] = resolved["quote"]
             search.extend([resolved["values"], resolved["quote"]])
         out.at[index, "requirement_search_text"] = " ".join(search)

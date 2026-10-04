@@ -13,7 +13,7 @@ from contextlib import contextmanager
 
 import altair as alt
 import streamlit as st
-from view.help import help_label
+from view.help import help_icon
 from view.assets import CARD_SYMBOLS, card_icon_html
 
 CHART_H = 420      # 축·범례를 포함한 차트 전체 높이
@@ -120,7 +120,10 @@ def kpi_tiles(items: list[dict], prefix: str):
                     with st.container(width=48, key=f"kpi_symbol_{color}_{prefix}_{i}"):
                         st.markdown(f":{color}[:material/{CARD_SYMBOLS[it['label']]}:]")
                 if it.get("help"):
-                    help_label(it["label"], it["help"], key=f"help_{prefix}_{i}", color=color)
+                    # 라벨·도움말을 같은 행의 직접 자식으로 둔다. 중첩된 가로
+                    # 컨테이너가 도움말을 다음 줄로 보내면 숫자 시작 높이가 달라진다.
+                    st.markdown(f":{color}[{it['label']}]", width="stretch")
+                    help_icon(it["label"], it["help"], key=f"help_{prefix}_{i}")
                 else:
                     st.markdown(f"**:{color}[{it['label']}]**", width="stretch")
             if it.get("instruction"):
