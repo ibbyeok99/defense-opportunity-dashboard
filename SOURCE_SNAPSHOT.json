@@ -522,8 +522,8 @@
     },
     {
       "path": "검증결과.md",
-      "sha256": "c3ba04bf2693e0ebcb178c93f5aca8aad51a7c4ced643e71ec98a98d2a92b605",
-      "git_lf_sha256": "c3ba04bf2693e0ebcb178c93f5aca8aad51a7c4ced643e71ec98a98d2a92b605"
+      "sha256": "1b4943b783d06e0c3665ab58fd350571bc063cb12565019570949601884a127c",
+      "git_lf_sha256": "1b4943b783d06e0c3665ab58fd350571bc063cb12565019570949601884a127c"
     },
     {
       "path": "소스코드_안내.md",
@@ -541,5 +541,5 @@
   "update_date": "2026-10-04",
   "update_basis": "승인된 현재 로컬 고객 화면. 관리자 진입 제외 전용 엔트리포인트. 원본 데이터/비밀값 제외.",
   "source_working_tree_base": "7436789f973e7cdd6b2b3eea0623fe0f24826204",
-  "previous_deployment_commit": "195e28e8aa9065942fa3563021355c3c44abec5e"
+  "previous_deployment_commit": "4a18b51fb85fa493ff767a1d2ebb0aaddb1e415a"
 }
