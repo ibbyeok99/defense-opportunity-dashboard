@@ -562,8 +562,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "8624a4541609330d6999d85c7a7b9be4476ee7bd315e4911d76d46835a96ae1f",
-      "git_lf_sha256": "ba7eb490fb70a05a24fe42dc8e66cccaa6017fd484572bf80082999ab2a033e5"
+      "sha256": "93d2dfe1e192aa2c6a8d2adb4ed36618e4b9696d1fc3621c0a8b97eafb66f7ce",
+      "git_lf_sha256": "75d7bb91cc84d6dc510fab10815e01b0cc0f2cb9d1ee38004f16b21cf28009bd"
     },
     {
       "path": "requirements.txt",
@@ -587,8 +587,8 @@
     },
     {
       "path": "검증결과.md",
-      "sha256": "1ac7e78794a367f71f3a499b3fb420136a5f1821ada032c55fc932b2b4162986",
-      "git_lf_sha256": "232585479e0db14d56d843d0143ac5e7b8c6dad0c3025e9d6e0b933cda71aac8"
+      "sha256": "07e5b389cb00303b914247a6236fb31886004ae551b9baaf5b481c6044022de4",
+      "git_lf_sha256": "fe28ae04fb92d1692581462c5f6f4ec38e9b63a4bd8226b7bf9cab699c35b1e4"
     },
     {
       "path": "소스코드_안내.md",
@@ -604,11 +604,14 @@
     }
   ],
   "update_date": "2026-10-04",
-  "update_basis": "사용자 승인 관리자 Gmail 사전등록·로그인 후 공고 이동. 기존 권한·API 설정 유지. 실제 이메일/인증키 제외. Cloud 이메일 항목 추가와 실제 로그인 확인 필요.",
+  "update_basis": "승인된 Gmail 사전등록·로그인 후 공고 이동 코드 업로드/원격 일치. Cloud 이메일 저장 사용자 보고. 실제 비로그인 공고/관리/Google로그인창 확인·추가계정 로그인 팀원 확인 대기. DB/API 복구 미완료. 후속 완료 문서 갱신.",
   "source_working_tree_base": "020bf25b509685744e25e604a537c5d6490fe8f7",
   "previous_deployment_commit": "9ad981f1b120aeba8bd14fa536d2cd34341eef13",
   "working_tree_patch_included": false,
-  "status": "code_ready_cloud_email_settings_pending",
+  "status": "code_uploaded_cloud_email_saved_login_dialog_verified_team_login_pending",
   "source_code_commit": "020bf25b509685744e25e604a537c5d6490fe8f7",
-  "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3"
+  "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
+  "deployed_code_commit": "1f9e5756181b1078135d41eb7534213343cc2936",
+  "account_settings_confirmation": "사용자 일반Chrome 저장 완료 보고",
+  "runtime_verification": "비로그인 공고 화면과 Google 로그인 창. 추가4명 로그인·관리자 운영 조회/저장 미검증"
 }
