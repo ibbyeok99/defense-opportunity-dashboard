@@ -62,8 +62,8 @@
     },
     {
       "path": "dashboard/app_pages/notices.py",
-      "sha256": "67f73d232238d5d29876783af67f30f781875d2658fad5ba130957f16fdb30a1",
-      "git_lf_sha256": "8e6d7982b290fb913baf71859ebeac7250b70b3a823a13c9e8203b6316d863bc"
+      "sha256": "0fa814309913da8cfc155d08fa2ce797befe11fedb13db367e9d0e9fff4d083f",
+      "git_lf_sha256": "37d1cbdb53e725eb2d75a7db74cfe43661dfbf009d43ce53fa441072cc74c328"
     },
     {
       "path": "dashboard/app_pages/overview.py",
@@ -142,8 +142,8 @@
     },
     {
       "path": "dashboard/assets/icons/notice_deadline.png",
-      "sha256": "94c869fdb9d092191175634fef2f0d385344c61c64ef3bc451556ea20c962532",
-      "git_lf_sha256": "94c869fdb9d092191175634fef2f0d385344c61c64ef3bc451556ea20c962532"
+      "sha256": "d8db4df17fb52eed4e732c39b5defc55d2c99bacd24737005efa45d90843afd6",
+      "git_lf_sha256": "d8db4df17fb52eed4e732c39b5defc55d2c99bacd24737005efa45d90843afd6"
     },
     {
       "path": "dashboard/assets/icons/notice_found.png",
@@ -612,8 +612,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "5ca170ae7f9ac8f003695650be65f9504f30401bd0f579991fc9ca976ae7b67b",
-      "git_lf_sha256": "5ca170ae7f9ac8f003695650be65f9504f30401bd0f579991fc9ca976ae7b67b"
+      "sha256": "3aa2b7d5b39c1922d95b23cbaab2371a8998bdee2bb749ff404965aef82631fb",
+      "git_lf_sha256": "3aa2b7d5b39c1922d95b23cbaab2371a8998bdee2bb749ff404965aef82631fb"
     },
     {
       "path": "requirements.txt",
@@ -654,12 +654,12 @@
     }
   ],
   "update_date": "2026-10-05",
-  "update_basis": "로그인 상태의 홈 유지·로그인 시작 전 페이지로 일회 복귀·상세 입력 안내 줄바꿈. 권한·외부 경로·만료 경계 유지.",
-  "source_working_tree_base": "3ee7213c1b415722321e8184328d4cbdc469d3e3",
+  "update_basis": "공고 요약 ‘마감 7일 안’ 제목을 테마 빨강으로 변경하고 로컬의 붉은 시계 아이콘을 포함.",
+  "source_working_tree_base": "4c76de9aded8b4279c69d3066652f1b8aa87de7f",
   "previous_deployment_commit": "39473f7e1ebde104e89658776f92f9bfcb9fba12",
   "working_tree_patch_included": false,
-  "status": "관련112검사와 브라우저 구성 요소 복귀/후속 홈 유지 통과. 실제 Google 인증 및 로그인된 공개 브라우저 확인 필요.",
-  "source_code_commit": "3ee7213c1b415722321e8184328d4cbdc469d3e3",
+  "status": "로컬 실제 제목 색상 #C62828 확인, 배포 사본 감사 통과. 공개 앱 표시 확인 대기.",
+  "source_code_commit": "4c76de9aded8b4279c69d3066652f1b8aa87de7f",
   "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
   "deployed_code_commit": "1f9e5756181b1078135d41eb7534213343cc2936",
   "account_settings_confirmation": "사용자 일반Chrome 저장 완료 보고",

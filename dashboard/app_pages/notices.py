@@ -173,7 +173,7 @@ new_today_n = int((pd.to_datetime(f["notice_date"]).dt.date == today).sum()) if 
 company_instruction = None if my_region or my_licenses else "사이드바의 ‘내 회사 조건’을 입력하면 일치 공고를 먼저 보여줍니다."
 kpi_tiles([
     {"label": "찾은 공고", "value": f"{found_n:,}건", "color": "blue"},
-    {"label": "마감 7일 안", "value": f"{urgent_n:,}건", "color": "blue"},
+    {"label": "마감 7일 안", "value": f"{urgent_n:,}건", "color": "red"},
     {"label": "회사 조건 일치", "value": f"{int(f['company_match'].sum()):,}건", "color": "green",
      "instruction": company_instruction,
      "help": "진행 중인 공고 중 입력한 소재지·면허가 확인된 등록 요건에 맞는 건수입니다. 미확인 항목은 일치로 세지 않습니다. 최종 참가 자격은 원문 기준입니다."},
