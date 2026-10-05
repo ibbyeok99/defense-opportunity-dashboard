@@ -29,10 +29,8 @@ if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
 # API 모드는 서명된 계정의 권한을 매 실행 확인한다. 임의 세션 플래그로 승격하지 않는다.
-admin_login_completed = False
 if data.SOURCE == "api":
     verified_admin = admin_access.authorized()
-    admin_login_completed = verified_admin and not st.session_state.is_admin
     st.session_state.is_admin = verified_admin
 
 
@@ -94,12 +92,8 @@ if st.session_state.is_admin:
                    st.Page("app_pages/quality.py", title="데이터 기준", icon=":material/verified:")]
 page = st.navigation(pages, position="hidden")
 
-# OIDC 로그인은 새 세션의 홈으로 돌아온다. 검증된 관리자만 첫 진입을 대시보드로 잇는다.
-# 이후 같은 세션에서 홈을 직접 열 때는 랜딩 페이지를 그대로 볼 수 있다.
-if admin_login_completed and page.url_path == "":
-    st.switch_page("app_pages/notices.py")
-
 # 홈은 DB 조회·검색 위젯·관리자 진입·공통 헤더 없이 독립적으로 표시한다.
+# 로그인 쿠키가 있는 새 세션도 홈 주소를 유지하며, 공고 진입은 홈 버튼으로 선택한다.
 if page.url_path == "":
     page.run()
     st.stop()
