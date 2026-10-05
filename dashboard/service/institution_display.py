@@ -9,7 +9,8 @@ def public_reason(value: str) -> str:
         dates = re.findall(r"\d{4}-\d{2}-\d{2}", match[1])
         return f"[수동판정 {dates[-1]}]" if dates else "[수동판정]"
 
-    return re.sub(r"\[수동판정(?=\s|\])([^\[\]]*)\]", manual_marker, str(value))
+    text = re.sub(r"\[수동판정(?=\s|\])([^\[\]]*)\]", manual_marker, str(value))
+    return re.sub(r'\[전체재검토 [0-9a-f]{32}\]', '[수동판정]', text)
 
 
 def roles_label(value: str) -> str:

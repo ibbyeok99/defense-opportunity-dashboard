@@ -86,14 +86,17 @@ with tab_pending, st.container(border=True):
                 st.rerun()
 
 with tab_automatic:
-    st.caption(f"검토 범위: 과거 검토 완료 목록에 없는 기관 중 {automatic_review.LIVE_REVIEW_START:%Y-%m-%d} 이후 처음 수집된 기관입니다.")
-    st.caption("수정할 기관만 선택해 국방 여부와 메모를 입력해 주세요. 선택하지 않은 기관은 기존 자동 판별을 유지합니다. "
-               "‘이번 검토 확정’을 누르면 목록 전체의 검토 결과를 S3 운영 기관 대장에 저장합니다.")
+    st.caption("수정할 기관만 선택해 국방 여부와 메모를 입력해 주세요. 선택하지 않은 기관은 기존 판정을 유지합니다. "
+               "‘이번 검토 확정’을 누르면 이번 목록의 검토 결과를 S3 운영 기관 대장에 저장합니다.")
     connected = True
     baseline = None
     try:
         baseline = automatic_review.historical_codes()
         automatic, receipts = automatic_review.snapshot()
+        if receipts.get('review_scope') == 'all':
+            st.caption(f"전체 기관 다시 검토: 현재 대장 {receipts.get('total_count', 0):,}개 중 남은 {receipts.get('remaining_count', 0):,}개. 국방 기관부터 최대500개씩 표시합니다. 과거 검토 기록은 보존합니다.")
+        else:
+            st.caption(f"검토 범위: 과거 검토 완료 목록에 없는 기관 중 {automatic_review.LIVE_REVIEW_START:%Y-%m-%d} 이후 처음 수집된 기관입니다.")
         automatic = automatic_review.live_new_rows(automatic, baseline)
         existing_batch = st.session_state.get("adm_auto_batch")
         if existing_batch and existing_batch["batch_id"] in receipts["batches"]:
@@ -102,6 +105,7 @@ with tab_automatic:
         if "adm_auto_batch" not in st.session_state and receipts.get("pending_requests"):
             saved = receipts["pending_requests"][0]
             st.session_state.adm_auto_batch = {"batch_id": saved["batch_id"], "rows": saved["rows"],
+                                               "review_scope": saved.get('review_scope', 'new'),
                                                "attempt": {"decisions": saved["decisions"], "reviewer": saved["reviewer"]}}
             st.session_state.adm_auto_selection = list(saved["decisions"])
             st.session_state.adm_auto_drafts = saved["decisions"]
@@ -145,7 +149,8 @@ with tab_automatic:
             automatic = automatic.copy()
             automatic["_review_id"] = [automatic_review.protocol.observation_id(r) for r in automatic.to_dict("records")]
         if "adm_auto_batch" not in st.session_state:
-            st.session_state.adm_auto_batch = {"batch_id": uuid.uuid4().hex, "rows": automatic.to_dict("records")}
+            st.session_state.adm_auto_batch = {"batch_id": uuid.uuid4().hex, "rows": automatic.to_dict("records"),
+                                               "review_scope": automatic.attrs.get('review_scope', 'new')}
         batch = st.session_state.adm_auto_batch
         rows = batch["rows"]
         by_id = {r["_review_id"]: r for r in rows}

@@ -26,6 +26,10 @@ class DataAPIError(RuntimeError):
     """사용자에게 URL·인증키·DB 오류 원문을 노출하지 않는 연결 오류."""
 
 
+class _BusyRead(DataAPIError):
+    """조회가 아직 실행되지 않은 서버 대기 응답만 구분한다."""
+
+
 def validate_url(url: str) -> str:
     parts = urlsplit(url)
     local = parts.hostname in {"127.0.0.1", "localhost", "::1"}
@@ -71,11 +75,24 @@ class DataAPIClient:
         self.max_bytes = max_bytes
 
     def _get(self, path: str, content_type: str, *, timeout=(5, 90), payload_limit=None) -> bytes:
+        # 서버가 작업 시작 전에 거부한 읽기 요청만 최대 네 번 시도한다.
+        # 인증 오류·원천 오류·저장 요청은 자동 재시도하지 않는다.
+        for attempt in range(4):
+            try:
+                return self._get_once(path, content_type, timeout=timeout, payload_limit=payload_limit)
+            except _BusyRead:
+                if attempt == 3:
+                    raise DataAPIError('데이터 조회 요청이 몰렸습니다. 잠시 후 다시 열어 주세요.') from None
+                time.sleep(0.5 * (attempt + 1))
+
+    def _get_once(self, path: str, content_type: str, *, timeout, payload_limit) -> bytes:
         try:
             # 리다이렉트로 다른 호스트에 인증키가 전달되지 않도록 자동 이동 금지.
             with requests.get(self.url + path, headers={"Authorization": "Bearer " + self._token},
                               timeout=timeout, allow_redirects=False, stream=True) as response:
                 if response.status_code != 200:
+                    if response.status_code == 429:
+                        raise _BusyRead('조회 대기')
                     if response.status_code in {401, 403}:
                         raise DataAPIError("데이터 API 인증에 실패했습니다. 인증키를 확인하세요.")
                     raise DataAPIError("데이터 API가 응답하지 않습니다. API·DB PC와 연결 상태를 확인하세요.")

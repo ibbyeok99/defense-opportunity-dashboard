@@ -32,8 +32,8 @@
     },
     {
       "path": "dashboard/app_pages/admin.py",
-      "sha256": "d1dad964af798f937d4dfcb7c6798531ea527e14d96527c675cf6fba3848a30a",
-      "git_lf_sha256": "cc1e59682d8d5ea10d4c22dff8bf72a3afab1db7eae33ffe01867382b7ac4878"
+      "sha256": "5590a619e5f707381f4899de33b18ebfc271561aabaf33480386a6415c3c4001",
+      "git_lf_sha256": "ebdf5a03e63ac73a6791e288cecbed6786ce006dbd556f113f12981ac9d8f8e5"
     },
     {
       "path": "dashboard/app_pages/category_criteria.py",
@@ -232,13 +232,13 @@
     },
     {
       "path": "dashboard/service/api_transport.py",
-      "sha256": "ba4298594bffc2fcc23adae021613e6fd05f46cafd5b388237490fae236908d7",
-      "git_lf_sha256": "f1c2442624d918c7ae5956ef18f7caece3969714d4e3a805eaf78c298198e1fe"
+      "sha256": "2340b4976f774207c577644b62d4fa4165875c2744f881f9660b655178a73594",
+      "git_lf_sha256": "0f0b413d6636df1c9f30eff92af7616d4010d8ec3e6e35aba46144ed79db9229"
     },
     {
       "path": "dashboard/service/automatic_review.py",
-      "sha256": "a7294920ddecf157c6dd82e1ccc60a7d022c04165c3235dc6cda6c755937ccc5",
-      "git_lf_sha256": "a7294920ddecf157c6dd82e1ccc60a7d022c04165c3235dc6cda6c755937ccc5"
+      "sha256": "45cb9307d350bc51fa2c31ca406e4a5427895bf7f03307fcd7d9810e6355200d",
+      "git_lf_sha256": "45cb9307d350bc51fa2c31ca406e4a5427895bf7f03307fcd7d9810e6355200d"
     },
     {
       "path": "dashboard/service/category_quality.py",
@@ -272,8 +272,8 @@
     },
     {
       "path": "dashboard/service/institution_display.py",
-      "sha256": "116c969e8508047af842d32d8a31321a9c9ca1bf3e61088012eabd201f4c8743",
-      "git_lf_sha256": "1be5cac60d466afa676be717591fdbf84e04cd4a0d04b7d13d4388f160e7a131"
+      "sha256": "27d5af80e24f7efff1b0d11952c3d3ae9a7466d677705f92d4b18389b1a79559",
+      "git_lf_sha256": "65a9e26c275aa3abb7cb1bedddc058338b3a4f826eafe4d879051ec2a378b74a"
     },
     {
       "path": "dashboard/service/institution_names.py",
@@ -607,8 +607,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "3da38a40380c11d03fdad27bd6cd59f407f5f486240c0fcbf1aff765e7027ed1",
-      "git_lf_sha256": "3da38a40380c11d03fdad27bd6cd59f407f5f486240c0fcbf1aff765e7027ed1"
+      "sha256": "6550c0555b3c1eac67478d5e5df340793dcbd0078fe34a7e8db2e5f169c5a354",
+      "git_lf_sha256": "6550c0555b3c1eac67478d5e5df340793dcbd0078fe34a7e8db2e5f169c5a354"
     },
     {
       "path": "requirements.txt",
@@ -649,14 +649,15 @@
     }
   ],
   "update_date": "2026-10-05",
-  "update_basis": "사용자가 승인한 최종 공고 조건 판단·즐겨찾기·비교 및 목록 조회 속도 개선. 비밀값·원문 사본·서버 코드 제외.",
-  "source_working_tree_base": "d33411d0e244084aea0febf0a397db9880aa5b4a",
-  "previous_deployment_commit": "ddcca5eec7a4713e889947d59d8726a18b4cc647",
-  "working_tree_patch_included": true,
-  "status": "검사 후 게시할 최종 수정본",
-  "source_code_commit": "020bf25b509685744e25e604a537c5d6490fe8f7",
+  "update_basis": "사용자 승인: 과거 이력 복구 대신 전체 기관 재검토. 별도 관리자 인증과 제한된 조회 대기 보완. 비밀값·원문·기관 실데이터 제외.",
+  "source_working_tree_base": "9af1ac6d2a8d35b5a480715cf9e93186b505638b",
+  "previous_deployment_commit": "b852288556332faff6d3cee10abfa977a3580468",
+  "working_tree_patch_included": false,
+  "status": "전체 기관 재검토 배포 수정본. 실제 HTTPS 관리자·품질 연결 확인, 운영 판정 변경 없음.",
+  "source_code_commit": "9af1ac6d2a8d35b5a480715cf9e93186b505638b",
   "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
   "deployed_code_commit": "1f9e5756181b1078135d41eb7534213343cc2936",
   "account_settings_confirmation": "사용자 일반Chrome 저장 완료 보고",
-  "runtime_verification": "비로그인 공고 화면과 Google 로그인 창. 추가4명 로그인·관리자 운영 조회/저장 미검증"
+  "runtime_verification": "비로그인 공고 화면과 Google 로그인 창. 추가4명 로그인·관리자 운영 조회/저장 미검증",
+  "previous_deployment_code_commit": "b852288556332faff6d3cee10abfa977a3580468"
 }
