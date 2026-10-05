@@ -236,7 +236,7 @@ def render_notice_list(f, profile, today, valid_until, initial_sort, initial_sou
     # 안내 문장은 표|카드 선택과 같은 줄 왼쪽에 둔다(별도 줄이면 ‘모든 공고’ 아래 공백이 커진다). 표|카드의 모양·위치는 그대로다.
     with results_panel, st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center", key="nt_view_row"):
         if show_requirements:
-            st.caption("회사 조건에 맞는 진행 중 공고를 먼저 보여주고 나머지는 마감이 가까운 순으로 표시합니다. 저장된 면허·지역 요건을 비교합니다. 추가 참가조건, 예외는 추가 확인이 필요합니다.", width="stretch")
+            st.caption("회사 조건에 맞는 진행 중 공고를 먼저 보여주고 나머지는 마감이 가까운 순으로 표시합니다. 저장된 면허·지역 요건을 비교합니다. 그 밖의 참가조건은 공고 원문에서 확인해 주세요.", width="stretch")
         with st.container(horizontal=True, horizontal_alignment="right", width="content", key="nt_view_controls"):
             st.segmented_control("보기", ["표", "카드"], required=True, key="nt_view", persist_state="session",
                                  default="표", label_visibility="collapsed",

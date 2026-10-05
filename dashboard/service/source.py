@@ -317,11 +317,10 @@ def read_collector_operations():
             return dict(checked_at=datetime.now(ZoneInfo('Asia/Seoul')).isoformat(),
                         errors=['관리자 API 운영 상태 확인 실패'], last_success=None,
                         repair_pending=None, judgment_pending=None, isolated_rows=None, repair_given_up=None)
-    from datetime import timedelta
     from zoneinfo import ZoneInfo
     from io import BytesIO
     from service import automatic_review
-    from service.operations import last_success, state_counts
+    from service.operations import read_last_success, state_counts
     now = datetime.now(ZoneInfo('Asia/Seoul'))
     value = dict(checked_at=now.isoformat(), errors=[], last_success=None,
                  repair_pending=None, judgment_pending=None, isolated_rows=None, repair_given_up=None)
@@ -349,21 +348,8 @@ def read_collector_operations():
         value['errors'].append('운영 상태/판정 대장 확인 실패')
     try:
         logs = automatic_review.client('logs')
-        request = dict(logGroupName=os.environ.get('FRONTLINE_COLLECTOR_LOG_GROUP', '/ecs/frontline-g2b-dev-collector'),
-                       startTime=int((now-timedelta(hours=24)).timestamp()*1000), endTime=int(now.timestamp()*1000),
-                       filterPattern='{ $.code = "G2B-RUN00" }', limit=100)
-        events, tokens = [], set()
-        for _ in range(3):
-            response = logs.filter_log_events(**request)
-            events.extend(response.get('events', []))
-            token = response.get('nextToken')
-            if not token or token in tokens:
-                break
-            tokens.add(token)
-            request['nextToken'] = token
-        else:
-            raise ValueError('성공 로그 조회 한도 초과·최신 여부 미확인')
-        value['last_success'] = last_success(events)
+        value['last_success'] = read_last_success(logs, os.environ.get(
+            'FRONTLINE_COLLECTOR_LOG_GROUP', '/ecs/frontline-g2b-dev-collector'), now)
     except Exception:
         value['errors'].append('수집 성공 로그 확인 실패')
     return value

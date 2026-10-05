@@ -32,8 +32,8 @@
     },
     {
       "path": "dashboard/app_pages/admin.py",
-      "sha256": "5590a619e5f707381f4899de33b18ebfc271561aabaf33480386a6415c3c4001",
-      "git_lf_sha256": "ebdf5a03e63ac73a6791e288cecbed6786ce006dbd556f113f12981ac9d8f8e5"
+      "sha256": "ab32c51d2d6eb6502adf99f144ecd1b7db72b3c0c3ada78a2b723fe9a5ae753c",
+      "git_lf_sha256": "eda4ac67c73442583b0d99aaf9e5605f9d303ccab2b90c2cf206ae8d68ca5a6f"
     },
     {
       "path": "dashboard/app_pages/category_criteria.py",
@@ -62,8 +62,8 @@
     },
     {
       "path": "dashboard/app_pages/notices.py",
-      "sha256": "8497d89229b37ce095c2630f916f65baf6bc5094b4f35b37a31d8b145def9da7",
-      "git_lf_sha256": "f6687e90ae19300e5e1a40a34a1ef2f457e7c9a18603cf9a0de4370e8f30bdfc"
+      "sha256": "67f73d232238d5d29876783af67f30f781875d2658fad5ba130957f16fdb30a1",
+      "git_lf_sha256": "8e6d7982b290fb913baf71859ebeac7250b70b3a823a13c9e8203b6316d863bc"
     },
     {
       "path": "dashboard/app_pages/overview.py",
@@ -327,8 +327,8 @@
     },
     {
       "path": "dashboard/service/operations.py",
-      "sha256": "ce965854bc67f553aae3cef7b1c14106d93ab554a47020eec24deed493f00f72",
-      "git_lf_sha256": "92bd72122792bcccb384dad0ac9a5e190ed538737d0be7741d0f0c12d046a11d"
+      "sha256": "718fbdc7ce8072aa29a18b29d2afdf4bf48bd9517ee0fbee0c0b56b04f221d4c",
+      "git_lf_sha256": "969e47c90f6c1c8fa6d2cf6fea21ff8485544b5152710fa8aacee0537a3e472a"
     },
     {
       "path": "dashboard/service/queries.py",
@@ -417,8 +417,8 @@
     },
     {
       "path": "dashboard/service/source.py",
-      "sha256": "700d9938d5f9be49252bdf284ae12b00c3aefb827f2c83d426c48dd1d5aa593d",
-      "git_lf_sha256": "10fa6430c735e37ab8cc55a3daf1d3bf64b43c0cbf8db533fc16d27ea2786794"
+      "sha256": "ff1b2a5b35120113230159e6436a620718ff846db51535f0ea7a1b1bba57a919",
+      "git_lf_sha256": "d5613ba9a4efe3d56a26e8e8accc28337e2abf74bf890ffc5f905010c3b1db31"
     },
     {
       "path": "dashboard/streamlit_app.py",
@@ -467,8 +467,8 @@
     },
     {
       "path": "dashboard/view/detail_design.py",
-      "sha256": "a7688a1e382afc4406e87cffec0b50898763ca64f1213e250241d4142dfcc643",
-      "git_lf_sha256": "a7688a1e382afc4406e87cffec0b50898763ca64f1213e250241d4142dfcc643"
+      "sha256": "808f3d7be1c3087cc28fa4e3ecf06dc2ecc431fff6ef7081c9463057b8091882",
+      "git_lf_sha256": "808f3d7be1c3087cc28fa4e3ecf06dc2ecc431fff6ef7081c9463057b8091882"
     },
     {
       "path": "dashboard/view/entry_summary.py",
@@ -607,8 +607,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "6550c0555b3c1eac67478d5e5df340793dcbd0078fe34a7e8db2e5f169c5a354",
-      "git_lf_sha256": "6550c0555b3c1eac67478d5e5df340793dcbd0078fe34a7e8db2e5f169c5a354"
+      "sha256": "f4880c211a53fe434bfbddfd5bc345bd6fd62122603c7b7c172fe8d21c79c7a6",
+      "git_lf_sha256": "f4880c211a53fe434bfbddfd5bc345bd6fd62122603c7b7c172fe8d21c79c7a6"
     },
     {
       "path": "requirements.txt",
@@ -649,15 +649,15 @@
     }
   ],
   "update_date": "2026-10-05",
-  "update_basis": "사용자 승인: 과거 이력 복구 대신 전체 기관 재검토. 별도 관리자 인증과 제한된 조회 대기 보완. 비밀값·원문·기관 실데이터 제외.",
-  "source_working_tree_base": "9af1ac6d2a8d35b5a480715cf9e93186b505638b",
-  "previous_deployment_commit": "b852288556332faff6d3cee10abfa977a3580468",
+  "update_basis": "사용자 요청의 참가조건 문구 변경과 서버 수집 상태 확인·관리자 로그 조회 보완. AWS 수집·예약·DB 적재·원본·판정 변경 없음.",
+  "source_working_tree_base": "c96aeb415fb8e5ce5cfd17d1c03fb6f325737863",
+  "previous_deployment_commit": "c59858f25b94e896883544c5e634faafd1ed5141",
   "working_tree_patch_included": false,
-  "status": "전체 기관 재검토 배포 수정본. 실제 HTTPS 관리자·품질 연결 확인, 운영 판정 변경 없음.",
-  "source_code_commit": "9af1ac6d2a8d35b5a480715cf9e93186b505638b",
+  "status": "참가조건 안내 변경과 관리자 수집 시각 조회 보완. 실제 HTTPS 최근 성공17:01:55 확인, AWS·DB·판정 변경 없음.",
+  "source_code_commit": "c96aeb415fb8e5ce5cfd17d1c03fb6f325737863",
   "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
   "deployed_code_commit": "1f9e5756181b1078135d41eb7534213343cc2936",
   "account_settings_confirmation": "사용자 일반Chrome 저장 완료 보고",
   "runtime_verification": "비로그인 공고 화면과 Google 로그인 창. 추가4명 로그인·관리자 운영 조회/저장 미검증",
-  "previous_deployment_code_commit": "b852288556332faff6d3cee10abfa977a3580468"
+  "previous_deployment_code_commit": "c59858f25b94e896883544c5e634faafd1ed5141"
 }

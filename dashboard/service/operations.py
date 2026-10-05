@@ -23,6 +23,30 @@ def last_success(events):
     return max(times).isoformat() if times else None
 
 
+def read_last_success(logs, group, now):
+    """최신 세 시간을 먼저 완전히 읽고, 성공이 없으면 나머지 하루 범위를 읽는다."""
+    for start, end in ((now - timedelta(hours=3), now), (now - timedelta(hours=24), now - timedelta(hours=3))):
+        request = dict(logGroupName=group, startTime=int(start.timestamp()*1000), endTime=int(end.timestamp()*1000),
+                       filterPattern='{ $.code = "G2B-RUN00" }', limit=100)
+        events, tokens = [], set()
+        for _ in range(3):
+            response = logs.filter_log_events(**request)
+            events.extend(response.get('events', []))
+            token = response.get('nextToken')
+            if not token:
+                break
+            if token in tokens:
+                raise ValueError('성공 로그 조회가 진행되지 않아 최신 여부를 확인하지 못했습니다.')
+            tokens.add(token)
+            request['nextToken'] = token
+        else:
+            raise ValueError('성공 로그 조회 한도 초과·최신 여부 미확인')
+        success = last_success(events)
+        if success:
+            return success
+    return None
+
+
 def state_counts(state, pending_frame):
     if not isinstance(state.get('repairs'), dict) or not isinstance(state.get('pending'), dict):
         raise ValueError('상태 대장 필수 항목 없음')

@@ -23,8 +23,9 @@ if not admin_access.authorized():
 
 st.markdown("### 관리자")
 meta = read('관리자 데이터 기준을 확인하는 중…', data.metadata)
-st.info(f"게시 데이터 기준 시각: {str(meta.get('data_as_of', '확인 필요'))[:16]}",
+st.info(f"DB 게시 데이터 기준 시각: {str(meta.get('data_as_of', '확인 필요'))[:16]}",
         icon=":material/science:")
+st.caption('서버 수집의 최근 성공 시각은 아래 ‘수집·게시 상태’에서 확인합니다.')
 tab_operations, tab_pending, tab_automatic = st.tabs(["운영 상태", "기관 판정 대기", "자동 판별 기관 검토"])
 
 with tab_operations, st.container(border=True):
