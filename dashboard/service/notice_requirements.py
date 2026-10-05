@@ -18,7 +18,7 @@ from service.requirement_documents import MAX_BYTES, evidence_from_text, extract
 BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/"
 OPERATIONS = {"물품": "getBidPblancListInfoThng", "용역": "getBidPblancListInfoServc",
               "공사": "getBidPblancListInfoCnstwk", "외자": "getBidPblancListInfoFrgcpt"}
-SCHEMA = "g2b-requirement-evidence-v16"
+SCHEMA = "g2b-requirement-evidence-v20"
 MAX_ATTACHMENTS = 20
 
 
@@ -222,7 +222,9 @@ def check_stored_requirements(row, *, time_budget=90, on_progress=None, reuse_re
     if not 5 <= time_budget <= 90:
         raise EvidenceError('확인 시간 한도는 5~90초입니다.')
     notice = _extra(row.get('extra_attributes'))
+    from service.notice_date_policy import notice_kind
     notice = dict(notice, bidNtceNo=number, bidNtceOrd=order,
+                  ntceKindNm=notice_kind(row),
                   bidNtceNm=_text(row.get('notice_name')).strip(),
                   bidNtceDtlUrl=_text(row.get('notice_url')),
                   bidClseDt=_text(row.get('bid_close_date')))
@@ -231,7 +233,7 @@ def check_stored_requirements(row, *, time_budget=90, on_progress=None, reuse_re
     result = dict(schema=SCHEMA, notice_number=number, notice_order=order,
                   checked_at=datetime.now(timezone.utc).isoformat(), evidence=[], sources=[], warnings=[],
                   api_license_rows=[], api_region_rows=[], attachment_inventory_complete=True,
-                  notice_flags={}, notice_facts={k: notice.get(k, '') for k in ('bidNtceNm','bidClseDt')},
+                  notice_flags={}, notice_facts={k: notice.get(k, '') for k in ('bidNtceNm','bidClseDt','ntceKindNm')},
                   input_mode='저장 API 재사용', detail_fingerprint=detail_fingerprint(row))
     previous = None
     if reuse_record:
@@ -285,7 +287,12 @@ def _read_sources(result, notice, number, order, procurement_type, deadline, inc
             result['public_page'] = dynamic
             public_kind=dynamic.get('notice_facts',{}).get('ntceKindNm','')
             if public_kind:
-                result['notice_facts']['ntceKindNm']=public_kind
+                from service.notice_date_policy import notice_kind
+                stored_kind = notice_kind(notice)
+                observed_kind = notice_kind({'ntceKindNm': public_kind})
+                if stored_kind and observed_kind and stored_kind != observed_kind:
+                    raise EvidenceError('공개 원문과 저장 공고 종류 불일치. 이전 차수의 조건을 결합하지 않습니다.')
+                result['notice_facts']['ntceKindNm']=observed_kind or stored_kind
                 if '취소공고' in re.sub(r'\s+','',public_kind):
                     result['warnings'].append('공개 화면에 취소 공고로 표시됩니다. 현재 차수의 빈 참가조건을 제한 없음으로 보거나 이전 차수의 조건을 상속하지 않습니다.')
             if 'attachment_inventory_complete' in dynamic:

@@ -1,8 +1,8 @@
 """공고 참여 판단 보조 — 내 회사 조건(소재지 시·도, 보유 면허)과 공고의 면허·지역 조건 비교.
 
 판단은 **보조**다. 최종 자격은 공고 원문 기준이다.
-- 면허: EDA `license_values`는 면허 그룹(lmtGrpNo)을 합쳐 버려 "모두 필요"인지 "하나만 있으면 됨"인지
-  알 수 없다. 그래서 보유 면허와 겹쳐도 '가능'으로 확정하지 않고 '확인'으로 둔다.
+- 면허: 표시된 요구 면허를 모두 보유하면 해당 면허 조건은 충족한다.
+  일부만 보유하고 조건 묶음이 불명확하면 추가 확인이 필요하다.
 - 지역: 회사 소재지는 시·도 단위로만 받는다. 허용 지역이 시·군 단위면 '확인'이다.
 """
 
@@ -16,7 +16,7 @@ STATUS_OPTIONS = [OK, CHECK, NO, NEED_INPUT]
 DISCLAIMER = "판단 보조입니다. 최종 참가 자격은 공고 원문을 기준으로 확인하세요."
 # 사용자 질문(2026-09-28) "확인 필요는 어떤 의미야?"에 대한 화면 설명
 LEGEND = {
-    OK: "내 소재지·면허로 참여 조건을 모두 충족합니다.",
+    OK: "확인된 면허·지역 요건을 충족합니다. 추가 참가조건·예외는 별도 확인이 필요합니다.",
     CHECK: "수집된 자료만으로는 판단할 수 없어 **공고 원문에서 조건을 직접 확인**해야 합니다. "
            "(① 조건 정보가 아직 수집되지 않음 ② 요구 면허 중 일부만 보유 ③ 지역 제한이 시·군 단위)",
     NO: "요구 면허를 하나도 보유하지 않았거나, 내 소재지가 허용 지역이 아닙니다.",
@@ -54,8 +54,8 @@ def judge_license(state, values, my_licenses: list[str]) -> Verdict:
     matched = required & set(my_licenses)
     if not matched:
         return Verdict(NO, "요구 면허 중 보유한 것 없음")
-    if len(required) == 1:
-        return Verdict(CHECK, f"요구 면허 보유({next(iter(matched))}) — 세부 조건 원문 확인")
+    if matched == required:
+        return Verdict(OK, "확인된 요구 면허 보유: " + ', '.join(sorted(matched)))
     return Verdict(CHECK, f"{len(required)}개 중 {len(matched)}개 보유 — 모두 필요한지 원문 확인")
 
 
@@ -90,12 +90,20 @@ def overall(lic: Verdict, reg: Verdict) -> str:
     return CHECK
 
 
+def comparable_condition(row, kind):
+    """문서에 명시된 값은 항목 판단에 사용하고 미확인·상충 후보는 보류한다."""
+    if not row.get(kind + '_requires_review', False):
+        return True
+    return (row.get(kind + '_state') == '제한있음' and row.get(kind + '_review_status') in
+            {'문서 제한 조건·원문 검토', '문서 지역 조건 확인·원문 검토'})
+
+
 def judge(row, my_region: str | list[str] | tuple[str, ...] | None, my_licenses: list[str]) -> tuple[str, Verdict, Verdict]:
     lic = judge_license(row["license_state"], row["license_values"], my_licenses)
     reg = judge_region(row["region_state"], row["region_values"], my_region)
-    # 문서 후보·상충 근거는 확인된 것처럼 회사의 충족/불가 판정에 쓰지 않는다.
-    if row.get("license_requires_review", False):
+    # 추가 참가조건 검토와 면허·지역 항목 판단을 분리한다. 근거 충돌은 보류한다.
+    if not comparable_condition(row, 'license'):
         lic = Verdict(CHECK, "면허 근거 확인 — 문장 전체·예외 원문 검토 필요")
-    if row.get("region_requires_review", False):
+    if not comparable_condition(row, 'region'):
         reg = Verdict(CHECK, "지역 근거 확인 — 문장 전체·예외 원문 검토 필요")
     return overall(lic, reg), lic, reg

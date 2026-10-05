@@ -54,21 +54,13 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
             st.warning("근거 확인 후 24시간이 지났거나 확인 시각이 유효하지 않습니다. 이전 결과는 표·검색에 쓰지 않으며 다시 조회해야 합니다.")
             return
         st.caption(f"확인 공고: {identity} · 확인 시각: {korean_time(result['checked_at'])} · 재확인 주기 24시간")
-        # 읽기 범위 계산은 service에서 수행한다. view는 전달받은 결과만 표시한다.
-        checked_scope = result.get('coverage', dict(status='자료 확인 미완료',
-            gaps=['자료 확인 범위 미기록·다시 조회 필요'], attachments_listed='미기록', attachments_read='미기록'))
-        st.markdown(f"**자료 확인 범위: {review_label(checked_scope['status'])}**")
-        st.caption(f"목록에 기록된 첨부 {checked_scope['attachments_listed']}개 / 텍스트를 읽은 첨부 {checked_scope['attachments_read']}개. 조회 완료는 모든 요건 확인 완료가 아닙니다.")
-        if checked_scope['gaps']:
-            st.warning(" · ".join(evidence_label(gap) for gap in checked_scope['gaps']))
+        # 첨부 발견/읽기/미탐지 세부 상태는 저장 기록에 보존하고 공개하지 않는다.
         if result.get("resolved"):
             for kind, label in (("license", "면허"), ("region", "지역")):
                 resolved = result["resolved"][kind]
                 st.markdown(f"**{label}: {review_label(resolved['review'])}**" + (f" — {resolved['values']}" if resolved['values'] else ""))
             st.caption("확인 결과는 요건 표·검색에 반영됩니다. 24시간이 지나면 다시 확인합니다.")
         if result.get('projection_schema'):
-            st.caption('PC에서 저장한 확인 결과입니다. 원문·첨부파일·발췌 사본은 전송하지 않습니다.')
-            st.info('정리된 기타 참가조건은 상세 요약에 표시합니다. 근거 문장과 예외·기준일은 나라장터 원문을 확인하거나 ‘요건 다시 확인’을 눌러 확인하세요.')
             return
         for kind in ("면허", "지역", "참가자격", "기타 참가조건"):
             items = [e for e in result["evidence"] if e["kind"] == kind and e.get("relevant", True)]
@@ -78,7 +70,7 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
                 continue
             st.markdown(f"**{kind} {'원문 발췌' if kind == '참가자격' else '요건 근거'}**")
             if not direct:
-                st.info("읽은 자료에서 해당 조건을 찾지 못했습니다. 아직 읽지 못한 자료가 있을 수 있습니다.")
+                st.info("조건을 확인하지 못함")
             if direct:
                 with st.expander(f"{kind} 전체 발췌 보기 · {len(direct)}개 근거"):
                     for e in direct:
@@ -92,15 +84,7 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
                     for e in related:
                         st.caption(f"{evidence_label(e['source'])} · {evidence_label(e['location'])} · {evidence_label(e['status'])}")
                         st.text(e.get('display_excerpt', e['excerpt']))
-        with st.expander("출처·읽기 결과"):
-            for source in result["sources"]:
-                st.markdown(f"**{evidence_label(source['name'])}** — {evidence_label(source['status'])}")
-                if source.get("url"):
-                    st.link_button("공식 출처 열기", source["url"], icon=":material/open_in_new:")
-                for member in source.get('archive_inventory', []):
-                    st.text(f"압축파일 내부: {member['name']} — {evidence_label(member['status'])}")
-                for gap in source.get('document_gaps', []):
-                    st.text(f"추가 확인이 필요한 부분: {evidence_label(gap)}")
+        with st.expander("나라장터 등록 조건"):
             if result["api_license_rows"]:
                 st.markdown("**나라장터 등록 면허 조건 상세 기록**")
                 st.json(api_condition_records(result["api_license_rows"]), expanded=False)

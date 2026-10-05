@@ -11,9 +11,9 @@ from view.help import help_icon
 
 
 VERDICTS = {
-    "● 참여 가능": ("적합", "ok", "확인된 조건을 충족합니다."),
+    "● 참여 가능": ("충족", "ok", "추가 참가조건, 예외는 추가 확인이 필요합니다."),
     "▲ 원문 확인": ("원문 확인 필요", "check", "원문 확인이 필요합니다."),
-    "■ 참여 불가": ("불충족", "no", "입력한 회사 조건과 맞지 않습니다."),
+    "■ 참여 불가": ("미충족", "no", "입력한 회사 조건과 맞지 않습니다."),
     "○ 내 조건 미입력": ("내 조건 미입력", "input", "회사 조건을 입력해 주세요."),
 }
 
@@ -38,6 +38,9 @@ def condition_verdict(row):
 
 def judgement_banner(status, conditions):
     rows = conditions.to_dict("records")
+    failed = [row['구분'] for row in rows if row['판단'] == '■ 참여 불가']
+    if failed:
+        return 'no', verdict('■ 참여 불가')[2]
     requested = [row["구분"] for row in rows if condition_verdict(row)[1] == "input"]
     if status == "■ 참여 불가" or not requested:
         _, tone, message = verdict(status)

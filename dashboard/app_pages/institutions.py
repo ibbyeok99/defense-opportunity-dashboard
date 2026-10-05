@@ -8,7 +8,8 @@ from view.pdf import Report
 from view.institution_table import institution_table
 from view.widgets import filter_area, pdf_button
 
-st.header("국방 기관·선정 기준")
+with st.container(key="guidance_title"):
+    st.header("국방 기관·선정 기준")
 st.caption("나라장터 공고 중 국방 조달 분석 대상에 포함하는 기준과 기관 목록입니다.")
 with st.container(border=True, gap="small"):
     st.subheader("어떤 공고를 포함하나요?")

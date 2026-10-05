@@ -29,15 +29,22 @@ def normalize_sort(value):
     return {"label": value["label"], "direction": value["direction"]}
 
 
+def _company_first(frame):
+    """각 구간의 선택 정렬을 보존하면서 일치 공고를 페이지 분할 전에 올린다."""
+    if 'company_match' not in frame:
+        return frame.copy()
+    return frame.sort_values('company_match', ascending=False, kind='mergesort').copy()
+
+
 def sort_notices(frame, value):
     state = normalize_sort(value)
     if not state["direction"]:
-        return frame.copy()
+        return _company_first(frame)
     field = SORT_FIELDS[state["label"]]
     if field not in frame.columns:
-        return frame.copy()
+        return _company_first(frame)
     if state["label"] == "면허·지역 요건":
         out = frame.copy()
         out["_requirement_sort"] = out["license_values"].fillna("") + " | " + out["region_values"].fillna("")
-        return out.sort_values("_requirement_sort", ascending=state["direction"] == 1, kind="mergesort").drop(columns="_requirement_sort")
-    return frame.sort_values(field, ascending=state["direction"] == 1, kind="mergesort", na_position="last").copy()
+        return _company_first(out.sort_values("_requirement_sort", ascending=state["direction"] == 1, kind="mergesort").drop(columns="_requirement_sort"))
+    return _company_first(frame.sort_values(field, ascending=state["direction"] == 1, kind="mergesort", na_position="last"))

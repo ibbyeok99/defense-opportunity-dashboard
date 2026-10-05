@@ -6,9 +6,8 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 from view import store
 from view.comparison import render_comparison
-from view.fmt import notice_requirement_summary, notice_identifier
-from view.detail_design import condition_verdict, judgement_banner, judgement_review_note
-from view.participation_requirements import participation_panel
+from view.fmt import notice_identifier
+from view.favorite_conditions import deadline_text, requirement_lines
 
 
 def saved_preview():
@@ -22,16 +21,9 @@ def saved_preview():
         with st.container(border=True):
             st.text(row.get('notice_name') or notice_id)
             st.caption(f"{row.get('procurement_type', '')} · {row.get('demand_agency_name', '')}")
-            # 표시 사본은 원문/보완 결과도 포함한다. 검토 상태를 함께 표시하며 판정은 재검증 뒤 생성.
-            summary = notice_requirement_summary(row.get('license_state', '미확인'), row.get('license_values', ''),
-                row.get('region_state', '미확인'), row.get('region_values', ''),
-                license_review=row.get('license_review_status', '미조회'),
-                region_review=row.get('region_review_status', '미조회'))
-            st.caption(summary)
-            if row.get('requirement_other_summary'):
-                st.text(row['requirement_other_summary'])
-            st.caption('저장본 · 확인 시각: ' + (row.get('requirement_checked_at') or '미확인') +
-                       ' · 최신 여부 확인 중(현재 참여 판단 아님)')
+            st.caption(deadline_text(row))
+            for line in requirement_lines(row):
+                st.caption(line)  # 브라우저 표시 사본만으로 충족을 판단하지 않는다.
 
 
 @st.fragment(run_every='2s')
@@ -107,35 +99,10 @@ def render_favorites(base_rows, *, requirement_reader, detail_builder, competiti
                     st.rerun()
             if n is not None:
                 snapshot = snapshots[notice_id]
-                summary = notice_requirement_summary(n.license_state, n.license_values, n.region_state, n.region_values,
-                    license_review=n.get('license_review_status', '미조회'), region_review=n.get('region_review_status', '미조회'))
-                lines = summary.split(' | ')
-                if snapshot['phase'] == 'running':
-                    lines = [('찾는 중… · ' + line if _needs(n, kind) else line)
-                             for kind, line in zip(('license', 'region'), lines)]
-                for line in lines:
-                    st.caption(line)
-                if snapshot['phase'] == 'running' and not any(_needs(n, kind) for kind in ('license', 'region')):
-                    st.caption('찾는 중… · 원문·첨부의 추가 참가조건 확인')
-                if snapshot['phase'] in {'failed', 'unavailable', 'busy'}:
-                    st.caption(snapshot['message'])
                 det = detail_builder(n)
-                if det is None:
-                    st.caption('회사 조건 비교 정보를 확인할 수 없습니다.')
-                    continue
-                tone, message = judgement_banner(det['status'], det['conditions'])
-                color = {'ok':'green', 'check':'orange', 'no':'red', 'input':'gray'}[tone]
-                st.badge(message, color=color)
-                for condition in det['conditions'].to_dict('records'):
-                    label, state, _ = condition_verdict(condition)
-                    st.caption(f"{condition['구분']} 비교: {label}")
-                    if state != 'input' and condition.get('이유'):
-                        st.caption(condition['이유'])
-                if tone == 'input' and (note := judgement_review_note(det['conditions'])):
-                    st.caption(note)
-                if det.get('participation_requirements'):
-                    with st.expander('기타 참가조건·근거 확인', key=f'fav_extra_{notice_id}'):
-                        participation_panel(det['participation_requirements'])
+                st.caption(deadline_text(n))
+                for line in requirement_lines(n, det):
+                    st.caption(line)
     st.subheader('공고 비교', anchor=False)
     old = st.session_state.get('fav_compare', [])
     if any(i not in available for i in old):

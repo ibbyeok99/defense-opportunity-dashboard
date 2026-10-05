@@ -138,6 +138,7 @@ def profile_changed():
     """공유 회사 입력 변경. 공고별 원문 확인 결과는 유지하고 이전 회사 판단만 무효화한다."""
     st.session_state['_favorite_profile_revision'] = st.session_state.get('_favorite_profile_revision', 0) + 1
     st.session_state.pop('_favorite_company_comparisons', None)
+    st.session_state.nt_page = 1
 
 _JS = """
 export default function (component) {

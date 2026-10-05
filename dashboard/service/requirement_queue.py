@@ -12,6 +12,7 @@ import pandas as pd
 from service.notice_saved_details import _extra, _text
 from service.requirement_overlay import identity, prepare, fresh
 from service.requirement_coverage import coverage
+from service.notice_date_policy import notice_kind
 
 QUEUE_SCHEMA = 'requirement-queue-v1'
 ROOT_FIELDS = ('notice_name', 'notice_date', 'bid_close_date', 'license_state', 'license_values',
@@ -45,8 +46,13 @@ def validate_state(state):
 
 
 def plan_work(frame, records, state, now, *, refresh_active=False, retry_failed=False, failures=(),
-              reprocess_incomplete=False, processing_version=''):
-    """전체 과거 자료도 계획하되 실행은 최신/마감 전부터 한도 내 진행한다."""
+              reprocess_incomplete=False, processing_version='', deadline_edge_size=0,
+              deadline_edges_only=False):
+    """전체 자료에서 구간을 정한 뒤 기존 처리 건을 제외한다. 기본은 마감 임박 순서다."""
+    if type(deadline_edge_size) is not int or not 0 <= deadline_edge_size <= 10000:
+        raise ValueError('마감일 양끝 구간 크기는 0~10000건입니다.')
+    if deadline_edges_only and not deadline_edge_size:
+        raise ValueError('양끝만 처리하려면 구간 크기를 지정하세요.')
     state = validate_state(state)
     latest = {}
     for record in records:
@@ -60,11 +66,46 @@ def plan_work(frame, records, state, now, *, refresh_active=False, retry_failed=
     ordered = frame.drop_duplicates('notice_id').copy()
     dates = pd.to_datetime(ordered.notice_date, errors='coerce')
     closes = pd.to_datetime(ordered.bid_close_date, errors='coerce')
-    # 1년 초과 입찰기간은 원본 확인 대상으로 보류한다. 법적 오류라고 확정하지 않는다.
-    ordered['_date_hold'] = (dates.gt(now) | closes.lt(dates) | (closes - dates).gt(pd.Timedelta(days=365))).fillna(False)
+    kinds = ordered.apply(notice_kind, axis=1)
+    cancelled = kinds.eq('취소공고')
+    long_period = (closes - dates).gt(pd.Timedelta(days=365)).fillna(False)
+    long_registration = long_period & kinds.isin(['등록공고', '변경공고'])
+    # 취소 게시일과 기존 입찰 마감은 순서가 역전될 수 있다. 장기 등록/변경은
+    # 날짜 원본 확인을 위한 별도 수집 대상이며 일반 진행 중 입찰로 우선하지 않는다.
+    ordered['_date_hold'] = (dates.gt(now) | (closes.lt(dates) & ~cancelled)
+                             | (long_period & ~long_registration & ~cancelled)).fillna(False)
     ordered['_open'] = (dates.le(now) & dates.ge(now - pd.Timedelta(days=365))
-                        & closes.ge(now) & ~ordered['_date_hold']).fillna(False)
-    ordered = ordered.sort_values(['_open', 'notice_date', 'notice_id'], ascending=[False, False, True], na_position='last')
+                        & closes.ge(now) & ~ordered['_date_hold'] & ~cancelled & ~long_period).fillna(False)
+    ordered['_notice_kind'] = kinds
+    ordered['_date_review'] = '일반 공고'
+    ordered.loc[long_registration, '_date_review'] = '장기 등록·변경공고·날짜 원본 확인'
+    ordered.loc[cancelled, '_date_review'] = '취소공고·이력 확인'
+    ordered.loc[ordered['_date_hold'], '_date_review'] = '날짜 원본 확인 보류'
+    ordered['_priority'] = 1
+    ordered.loc[ordered['_open'], '_priority'] = 0
+    ordered.loc[long_registration, '_priority'] = 2
+    ordered.loc[cancelled, '_priority'] = 3
+    ordered['_deadline_priority'] = closes.where(ordered['_open'])
+    ordered = ordered.sort_values(['_priority', '_deadline_priority', 'notice_date', 'notice_id'],
+                                 ascending=[True, True, False, True], na_position='last')
+    ordered['_deadline_group'] = '기존 순서'
+    if deadline_edge_size:
+        # 처리 이력을 빼기 전에 구간을 고정한다. 회차마다 앞 1000개가 이동하지 않는다.
+        dated = ordered.loc[~ordered['_date_hold'] & closes.notna()].copy()
+        dated['_close_order'] = closes.loc[dated.index]
+        dated = dated.sort_values(['_close_order', 'notice_id'])
+        front = dated.head(deadline_edge_size).index
+        back = dated.tail(deadline_edge_size).index.difference(front, sort=False)
+        ordered['_edge_priority'] = 2
+        ordered['_edge_deadline'] = closes
+        ordered['_deadline_group'] = '중간 구간'
+        ordered.loc[front, ['_edge_priority', '_deadline_group']] = [0, '앞 구간']
+        ordered.loc[back, ['_edge_priority', '_deadline_group']] = [1, '뒤 구간']
+        ordered.loc[~ordered['_date_hold'] & closes.isna(), ['_edge_priority', '_deadline_group']] = [3, '마감일 미확인']
+        ordered = ordered.sort_values(['_edge_priority', '_edge_deadline', 'notice_id'],
+                                     na_position='last')
+        if deadline_edges_only:
+            ordered = ordered.loc[ordered['_deadline_group'].isin(['앞 구간', '뒤 구간'])]
     for row in ordered.to_dict('records'):
         try:
             key = '|'.join(identity(row))
@@ -106,12 +147,19 @@ def plan_work(frame, records, state, now, *, refresh_active=False, retry_failed=
             reason = ('실패 명시적 재처리' if failure else '읽기 보완 버전 적용' if upgrade else '마감 전 근거 갱신' if same else
                       '입력 변경' if previous or record else '신규 미조회')
             work.append({'notice_id': key, 'fingerprint': digest, 'reason': reason,
+                         'date_review': row['_date_review'], 'notice_kind': row['_notice_kind'],
+                         'deadline_group': row['_deadline_group'],
                          'processing_version': processing_version,
                          'expected_title': _text(row.get('notice_name')).strip(),
                          'expected_close': _text(row.get('bid_close_date'))})
             counts[reason] += 1
     return {'state': {'schema': QUEUE_SCHEMA, 'jobs': jobs}, 'work': work, 'date_holds':date_holds,
             'summary': {'target': len(ordered), 'queued': len(work), 'counts': dict(counts),
+                        'date_reviews': ordered['_date_review'].value_counts().to_dict(),
+                        'deadline_edge_size': deadline_edge_size,
+                        'deadline_edges_only': deadline_edges_only,
+                        'deadline_groups': ordered.loc[~ordered['_date_hold'], '_deadline_group'].value_counts().to_dict(),
+                        'queued_deadline_groups': dict(Counter(job['deadline_group'] for job in work)),
                         'existing_reclassified': dict(classified)}}
 
 
@@ -127,10 +175,14 @@ def process_work(plan, checker, save_evidence, save_state, *, limit=5, progress=
             progress({'stopped': '회차 시간 한도·미실행 작업은 대기 유지'})
             break
         pt, number, order = job['notice_id'].split('|')
-        state['jobs'][job['notice_id']] = {'fingerprint': job['fingerprint'], 'phase': '처리 중단·확인 필요'}
+        state['jobs'][job['notice_id']] = {'fingerprint': job['fingerprint'], 'phase': '처리 중단·확인 필요',
+                                         'deadline_group': job.get('deadline_group', '기존 순서'),
+                                         'date_review': job.get('date_review', '일반 공고')}
         save_state(state)  # 프로세스가 여기서 종료돼도 자동 중복 호출하지 않는다.
         stage = '원문·첨부 읽기'
         try:
+            progress({'started': '원문·첨부 읽기', 'notice_id': job['notice_id'], 'deadline': job['expected_close'],
+                      'deadline_group': job.get('deadline_group', '기존 순서')})
             result = checker(number, order, pt)
             stage = '공고 번호·차수 대조'
             if identity(dict(result, procurement_type=pt)) != (pt, number, order):
@@ -139,6 +191,10 @@ def process_work(plan, checker, save_evidence, save_state, *, limit=5, progress=
             stage = '공고 제목 대조'
             if facts.get('bidNtceNm') and _text(facts['bidNtceNm']).strip() != job['expected_title']:
                 raise ValueError('조회 결과와 저장 공고 제목 불일치')
+            stage = '공고 종류 대조'
+            expected_kind, observed_kind = job.get('notice_kind'), notice_kind(facts)
+            if expected_kind and observed_kind and expected_kind != observed_kind:
+                raise ValueError('조회 결과와 저장 공고 종류 불일치')
             stage = '공고 마감일 대조'
             if facts.get('bidClseDt'):
                 expected = pd.to_datetime(job['expected_close'], errors='coerce')

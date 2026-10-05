@@ -19,6 +19,7 @@ from xml.etree import ElementTree as ET
 MAX_BYTES = 30 * 1024 * 1024
 MAX_EXPANDED = 64 * 1024 * 1024
 MAX_TEXT = 2_000_000
+MAX_QUALIFICATION_QUOTE = 30_000
 MAX_ARCHIVE_DOCUMENTS = 20
 MAX_PDF_PAGES = 1000
 FAST_PDF_THRESHOLD = 300
@@ -65,10 +66,12 @@ PATTERNS = {
 }
 QUALIFICATION = re.compile(
     r"(?:^|\n)[ \t]*(?:[□■●○]\s*)?(?:(?P<number>\d{1,2})[.)]\s*)?"
-    r"(?:입\s*찰\s*)?(?:참\s*가\s*자\s*격|참\s*가\s*요\s*건|참\s*여\s*조\s*건)"
+    r"(?:(?:입\s*찰(?:\s*[（(]\s*견\s*적\s*(?:서\s*)?제\s*출\s*[）)])?|견\s*적\s*(?:서\s*)?제\s*출|다수\s*공급자\s*계약\s*구매)\s*)?(?:참\s*가\s*자\s*격|참\s*가\s*요\s*건|참\s*여\s*조\s*건)"
     r"(?:\s*(?:및|과)\s*(?:등록\s*사항|조건|요건|제한\s*사항))?"
+    r"[ \t]*(?:[（(]\s*적격성\s*평가\s*신청일\s*기준\s*[）)])?"
     r"[ \t]*(?:(?P<trailing>\d{1,2})\s*\.)?[ \t]*(?:[:：][ \t]*|\n|$)")
 NEXT_HEADING = re.compile(r"\n\s*(?P<number>\d{1,2})[.)]\s*[^\n]{2,80}(?:\n|$)")
+NEXT_CAUTION_HEADING = re.compile(r"\n[ \t]*[□■●○][ \t]*유\s*의\s*사\s*항[^\n]{0,80}(?:\n|$)")
 QUALIFICATION_EN = re.compile(
     r"(?:^|\n)[ \t]*(?:(?P<number>\d{1,2})[.)][ \t]*)?"
     r"QUALIFICATIONS?\s+(?:OF|FOR)\s+BIDDERS?[ \t]*[:：]?[ \t]*(?:\n|$)", re.I)
@@ -93,12 +96,17 @@ def evidence_from_text(text: str, location: str) -> list[dict]:
         parent_number = int(number) if number else None
         next_heading = next((m for m in NEXT_HEADING.finditer(text, heading.end())
                              if parent_number is None or int(m.group("number")) > parent_number), None)
-        end = next_heading.start() if next_heading else min(len(text), heading.end() + 6000)
+        end = next_heading.start() if next_heading else len(text)
+        # 실제 무번호 참가자격 뒤의 유의사항 구역을 자격 요건에 섞지 않는다.
+        if parent_number is None:
+            caution = NEXT_CAUTION_HEADING.search(text, heading.end())
+            if caution:
+                end = min(end, caution.start())
         qualifications.append((heading.start(), end))
         evidence.append({"kind": "참가자격", "location": location,
-                         "excerpt": _quote(text[heading.start():end])[:6000],
+                         "excerpt": _quote(text[heading.start():end])[:MAX_QUALIFICATION_QUOTE],
                          "scope": "참가자격 구역", "status": "검토용 근거 후보",
-                         "excerpt_truncated": end - heading.start() > 6000,
+                         "excerpt_truncated": len(_quote(text[heading.start():end])) > MAX_QUALIFICATION_QUOTE,
                          "start": heading.start(), "end": end})
     for heading in QUALIFICATION_EN.finditer(text):
         number = heading.group('number')
@@ -109,8 +117,8 @@ def evidence_from_text(text: str, location: str) -> list[dict]:
         end = min(candidates) if candidates else len(text)
         qualifications.append((heading.start(), end))
         evidence.append(dict(kind='참가자격', location=location,
-            excerpt=_quote(text[heading.start():end])[:6000], scope='참가자격 구역',
-            status='영문 참가자격 구역·원문 검토', excerpt_truncated=end-heading.start()>6000,
+            excerpt=_quote(text[heading.start():end])[:MAX_QUALIFICATION_QUOTE], scope='참가자격 구역',
+            status='영문 참가자격 구역·원문 검토', excerpt_truncated=len(_quote(text[heading.start():end]))>MAX_QUALIFICATION_QUOTE,
             start=heading.start(), end=end))
     for kind, pattern in PATTERNS.items():
         ends = -1
@@ -141,17 +149,25 @@ def evidence_from_text(text: str, location: str) -> list[dict]:
 
 def _hwp_text(data: bytes) -> str:
     """HWP 5 PARA_TEXT. 제어문자 payload를 건너뛰고 본문만 보존한다."""
+    if len(data) % 2:
+        raise DocumentReadError('text_encoding')
     result, offset = [], 0
     extended = {1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}
     while offset + 2 <= len(data):
         code = struct.unpack_from("<H", data, offset)[0]
         if code in extended:
+            if offset + 16 > len(data):
+                raise DocumentReadError('damaged_document')
             result.append(" ")
             offset += 16
         else:
             result.append(chr(code) if code >= 32 else "\n" if code in {10, 13} else " ")
             offset += 2
-    return "".join(result)
+    # UTF-16의 서로게이트 쌍은 한 문자로 복원한다. 잘못된 쌍을 지우거나 추정하지 않는다.
+    try:
+        return "".join(result).encode('utf-16-le', errors='surrogatepass').decode('utf-16-le', errors='strict')
+    except UnicodeError:
+        raise DocumentReadError('text_encoding') from None
 
 
 def _hwp_section(data: bytes) -> str:
@@ -251,6 +267,10 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
     if blob.startswith((b'\x9b DRMONE', b'<DOCUMENTSAFER_0>\x00')):
         raise DocumentReadError('protected_document')
     sections = []
+    xml_prefix=blob[:8192].removeprefix(b'\xef\xbb\xbf').lstrip()
+    if (xml_prefix.startswith(b'<?xml') or xml_prefix.startswith(b'<HWPML')) and re.search(br'<HWPML\b',xml_prefix):
+        from service.requirement_hwpml import hwpml_sections
+        return 'HWPML',hwpml_sections(blob)
     if blob.startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff')):
         from PIL import Image
         from service.requirement_ocr import MAX_PIXELS, recognize
@@ -327,6 +347,9 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
                 if any(name.startswith('word/media/') for name in archive.namelist()):
                     sections.append(('DOCX 내부 이미지 · 미확인·수동 대조 필요', ''))
                 return "DOCX", sections
+            if 'ppt/presentation.xml' in archive.namelist():
+                from service.requirement_presentation import presentation_sections
+                return 'PPTX', presentation_sections(archive)
             if 'xl/workbook.xml' in archive.namelist():
                 if any('vbaproject' in name.lower() for name in archive.namelist()):
                     raise ValueError("매크로 포함 통합문서는 수동 확인이 필요합니다.")
@@ -337,7 +360,7 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
                     raise ValueError("중첩 ZIP은 수동 확인이 필요합니다.")
                 if len({e.filename for e in entries}) != len(entries):
                     raise ValueError("중복 이름이 있는 ZIP은 수동 확인이 필요합니다.")
-                documents = [e for e in entries if not e.is_dir() and re.search(r"\.(?:pdf|hwp|hwpx|docx|xlsx|xls|png|jpe?g|html?)$", e.filename, re.I)]
+                documents = [e for e in entries if not e.is_dir() and re.search(r"\.(?:pdf|hwp|hwpx|docx|pptx|xlsx|xls|cell|png|jpe?g|html?)$", e.filename, re.I)]
                 if not documents:
                     raise ValueError("지원하지 않는 ZIP 문서 구성입니다. 내부 파일 형식 확인이 필요합니다.")
                 # 규격서가 많아도 원본 공고문까지 전부 거부하지 않는다.
@@ -391,9 +414,21 @@ def document_sections(blob: bytes, _archive_depth: int = 0, _inventory=None) -> 
         import olefile
         with olefile.OleFileIO(BytesIO(blob)) as compound:
             is_workbook = compound.exists('Workbook') or compound.exists('Book')
+            is_word = compound.exists('WordDocument')
+            is_hwp = compound.exists('FileHeader')
+        if is_word and not is_hwp and not is_workbook:
+            raise DocumentReadError('unsupported_format')
+        if not is_workbook and not is_hwp:
+            raise DocumentReadError('unsupported_format')
         if is_workbook:
             import xlrd
-            workbook = xlrd.open_workbook(file_contents=blob, on_demand=True)
+            try:
+                workbook = xlrd.open_workbook(file_contents=blob, on_demand=True)
+            except xlrd.biffh.XLRDError as error:
+                # 실제 한셀 OLE는 Workbook이 있어도 BIFF 엑셀이 아닐 수 있다.
+                if str(error) == "Can't determine file's BIFF version":
+                    raise DocumentReadError('unsupported_format') from None
+                raise
             try:
                 if workbook.nsheets > 50:
                     raise ValueError("시트 처리 한도를 초과했습니다.")

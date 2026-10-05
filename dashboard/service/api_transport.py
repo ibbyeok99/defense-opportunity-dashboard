@@ -42,8 +42,11 @@ def encode_frame(frame: pd.DataFrame) -> bytes:
     metadata = dict(table.schema.metadata or {})
     metadata[b"frontline.attrs"] = json.dumps(frame.attrs, ensure_ascii=False).encode("utf-8")
     table = table.replace_schema_metadata(metadata)
+    if table.nbytes > MAX_BYTES:
+        raise ValueError('압축 전 데이터 크기 한도를 초과했습니다.')
     sink = pa.BufferOutputStream()
-    with pa.ipc.new_stream(sink, table.schema) as writer:
+    # 기존 Arrow 클라이언트도 해석할 수 있는 무손실 내부 압축으로 전송 버퍼를 줄인다.
+    with pa.ipc.new_stream(sink, table.schema, options=pa.ipc.IpcWriteOptions(compression='zstd')) as writer:
         writer.write_table(table)
     return sink.getvalue().to_pybytes()
 
@@ -51,6 +54,8 @@ def encode_frame(frame: pd.DataFrame) -> bytes:
 def decode_frame(payload: bytes) -> pd.DataFrame:
     with pa.ipc.open_stream(io.BytesIO(payload)) as reader:
         table = reader.read_all()
+    if table.nbytes > MAX_BYTES:
+        raise ValueError('압축 전 데이터 크기 한도를 초과했습니다.')
     frame = table.to_pandas(use_threads=False)
     attrs = (table.schema.metadata or {}).get(b"frontline.attrs", b"{}")
     frame.attrs.update(json.loads(attrs))

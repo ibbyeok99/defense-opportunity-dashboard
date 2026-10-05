@@ -37,8 +37,8 @@
     },
     {
       "path": "dashboard/app_pages/category_criteria.py",
-      "sha256": "32c9b310b9e511e7e21150bf21517a2fa493bd5444113f95cdba0763ae926e78",
-      "git_lf_sha256": "4bfe0d8a10e825159f8ad7af7b751c902fba1f2724584db1c48cb7226260c465"
+      "sha256": "0caa763f4285631a5600413aa129511ae0ff48bc27fd0ceb0e921c04c8a7dca7",
+      "git_lf_sha256": "4110f890be72cd672a3982947be7f05c569b5096ea26a4e22287d8ee950c582a"
     },
     {
       "path": "dashboard/app_pages/favorites.py",
@@ -52,8 +52,8 @@
     },
     {
       "path": "dashboard/app_pages/institutions.py",
-      "sha256": "04c55328ab0fa48407e06cbbe2c783e76daa20048a38f3b1d837e200e66a1c22",
-      "git_lf_sha256": "9b369585777e2b70fa76703bb8454d5216be6653edbd59f1c46b6601e201787e"
+      "sha256": "d47f161343c6ecb5f61641d9569292ebb3ddad744076ed4ce710261a4fa17ee6",
+      "git_lf_sha256": "3d40165b3b7904fa772d3145dc19075000259168d9ea5eddd33d38c705d88d46"
     },
     {
       "path": "dashboard/app_pages/item.py",
@@ -62,8 +62,8 @@
     },
     {
       "path": "dashboard/app_pages/notices.py",
-      "sha256": "199490530a4bcb220e71af751c4e8947185f7f5a4bb3bbea78f2f1e9b444351f",
-      "git_lf_sha256": "c8048f7462867b6e9d5f2abde8869fa5d2828ed32375ebc1cb732c2620357d3a"
+      "sha256": "8497d89229b37ce095c2630f916f65baf6bc5094b4f35b37a31d8b145def9da7",
+      "git_lf_sha256": "f6687e90ae19300e5e1a40a34a1ef2f457e7c9a18603cf9a0de4370e8f30bdfc"
     },
     {
       "path": "dashboard/app_pages/overview.py",
@@ -151,6 +151,11 @@
       "git_lf_sha256": "b6213eb36e5d84922565d883dcac1e68b89b61787ae5d5b7f97387e0ad839f1b"
     },
     {
+      "path": "dashboard/assets/icons/notice_new_today.png",
+      "sha256": "2c3181f67b6a3b29675a09ef3bb59dc40d0b1e43de4384bd8498578e6f1ad58a",
+      "git_lf_sha256": "2c3181f67b6a3b29675a09ef3bb59dc40d0b1e43de4384bd8498578e6f1ad58a"
+    },
+    {
       "path": "dashboard/assets/icons/notice_review.png",
       "sha256": "28db03bbe4e10a466628c7cca3bcb5a5f244ce503fcab1f3ff25dd6ddeac6eba",
       "git_lf_sha256": "28db03bbe4e10a466628c7cca3bcb5a5f244ce503fcab1f3ff25dd6ddeac6eba"
@@ -227,12 +232,12 @@
     },
     {
       "path": "dashboard/service/api_transport.py",
-      "sha256": "5cc577303c7299fc57a8e69676ca64fdcfc47e75067af72f0876edb2cdc707da",
-      "git_lf_sha256": "c9bea9eded638f33d8bb034708c6563893af1319ced9731d099b1b369baf1bfc"
+      "sha256": "d4deee87e364c263926f638b5ac5333ca3f84d27c54c70a7744a5f40c3777494",
+      "git_lf_sha256": "013066dcbdaf5a074a2a4dc16fe7b737187ef5e8c4a8caf782eaca5393d96586"
     },
     {
       "path": "dashboard/service/automatic_review.py",
-      "sha256": "6687b5ce8dc8e82564874b7515c7751983cd5422d8be9500a3951a8bf7e9c15f",
+      "sha256": "a7294920ddecf157c6dd82e1ccc60a7d022c04165c3235dc6cda6c755937ccc5",
       "git_lf_sha256": "a7294920ddecf157c6dd82e1ccc60a7d022c04165c3235dc6cda6c755937ccc5"
     },
     {
@@ -241,14 +246,19 @@
       "git_lf_sha256": "b24e242738b545ddec067a8d82a81be07926d2b8f0ccaa5091b40626a5febd38"
     },
     {
+      "path": "dashboard/service/company_match.py",
+      "sha256": "d7dadd97f6e5c228f0b64c073094b3a895481b8becc692b44c7f9c924ea2ce5f",
+      "git_lf_sha256": "d7dadd97f6e5c228f0b64c073094b3a895481b8becc692b44c7f9c924ea2ce5f"
+    },
+    {
       "path": "dashboard/service/data.py",
-      "sha256": "91872c55b891873caf8bcfbd998a20cfa7cd7080630293c8f33dee16585721cc",
-      "git_lf_sha256": "240253dc57279605e187cf8e714dd2a9613a21ad509f1423ab7ccccef27b515b"
+      "sha256": "65cedfdf1b607a6cb813cc2c6a44eb66f0a37b347b08900a6568e810ec1ea36d",
+      "git_lf_sha256": "331682c16dd8e925ebf8bd4eb9f6e541bdc93441c3bfc390c1ab86199ebc43db"
     },
     {
       "path": "dashboard/service/eligibility.py",
-      "sha256": "c3f93f2907fef44bbf383f8ced8487fe2269ce10e3bdcccf9e1c841791baab7b",
-      "git_lf_sha256": "7dcec978c60c6d2521ee7490eff75cdce2e73fdc8894064f2ef9d7d82d040f0a"
+      "sha256": "23711ae9d545fa188e945fa9acf2391750890fc54942d425e1156552d8356931",
+      "git_lf_sha256": "80c9eda09d04061875f316aeaeae7c70559b7a7888b35e9296aebad7525d8f16"
     },
     {
       "path": "dashboard/service/filters.py",
@@ -262,8 +272,8 @@
     },
     {
       "path": "dashboard/service/institution_display.py",
-      "sha256": "5afdd2ebf2be5f253e2de5429191f1211cbe473cdf6b60d30b0c82522ab11d29",
-      "git_lf_sha256": "9c7faa0a9758a1512950625670dd6ceb065999210e5ca0abd9deb10b2737f2fe"
+      "sha256": "116c969e8508047af842d32d8a31321a9c9ca1bf3e61088012eabd201f4c8743",
+      "git_lf_sha256": "1be5cac60d466afa676be717591fdbf84e04cd4a0d04b7d13d4388f160e7a131"
     },
     {
       "path": "dashboard/service/institution_names.py",
@@ -276,9 +286,24 @@
       "git_lf_sha256": "166049209059b18a609c5f19576488d4fa16977637ac2c6e39a0a2024f8013db"
     },
     {
+      "path": "dashboard/service/notice_date_policy.py",
+      "sha256": "0c92be1bc7fea395c653137f020c57c53253acbb527045ac84dedb235921d6a6",
+      "git_lf_sha256": "0c92be1bc7fea395c653137f020c57c53253acbb527045ac84dedb235921d6a6"
+    },
+    {
       "path": "dashboard/service/notice_documents.py",
       "sha256": "12723b164dec16ab3492cf62e057c8922063d6f2f5a3f085dd77e8ecf54e0e41",
       "git_lf_sha256": "893840363a833b623ad9e56cf1b3bf4770e6670549164ade6f5abf7d78102453"
+    },
+    {
+      "path": "dashboard/service/notice_list_cache.py",
+      "sha256": "cfd2921b046db73be2f1768ea287bb323bec4885e1184eb3a0901311a9c7fb94",
+      "git_lf_sha256": "cfd2921b046db73be2f1768ea287bb323bec4885e1184eb3a0901311a9c7fb94"
+    },
+    {
+      "path": "dashboard/service/notice_list_refresh.py",
+      "sha256": "f8b99c4f0b78bb0a047bec30b09e21aa5531190830f6d3f221bf993ea4ebf8c0",
+      "git_lf_sha256": "f8b99c4f0b78bb0a047bec30b09e21aa5531190830f6d3f221bf993ea4ebf8c0"
     },
     {
       "path": "dashboard/service/notice_projection.py",
@@ -287,8 +312,8 @@
     },
     {
       "path": "dashboard/service/notice_requirements.py",
-      "sha256": "cf05d63855bd9f6f1ad3c7976f416f016f98af2314c9d00d7864d3006878ec7c",
-      "git_lf_sha256": "e9b10a585f6e5302b0a0abc307afb85f3b6875e81e0ff6d427aa8c0f86e5123c"
+      "sha256": "6f9191d399b49e5ee8f6a95a3ce42a441fbb4cd1221989e13529051831c7e045",
+      "git_lf_sha256": "58c55013d6055819110768d3b3e828ead28dd28bbbfc4d6ffd90e37a9a93e50e"
     },
     {
       "path": "dashboard/service/notice_saved_details.py",
@@ -297,8 +322,8 @@
     },
     {
       "path": "dashboard/service/notice_sort.py",
-      "sha256": "d82bf2ee40d44c8a228bd608871e134abd3d4f68d946e6578b5baca98e9b6492",
-      "git_lf_sha256": "4e2abdb7c734cbb0a379104a5a80d1f87ac6771160d8ed80d4a94c9070d68e73"
+      "sha256": "cc056899452c61114ceca9ff4a7b6044d0021ed66baa0e0583a728f61aa23fff",
+      "git_lf_sha256": "28063361676545f95bd5739cd62fa63ae9de9dd0aee3a642b934e757677cccfd"
     },
     {
       "path": "dashboard/service/operations.py",
@@ -307,8 +332,8 @@
     },
     {
       "path": "dashboard/service/queries.py",
-      "sha256": "442c900fa79d1e7a6734b194162c511e350f41c77135e413d7323f57f71957c7",
-      "git_lf_sha256": "fef80dc8f3da1fc6618065af3dfd3f8da8fb80a658d6dce7634c3399c852f853"
+      "sha256": "9416fa71771d855cb0cf9dc6663f2b6949d233c5a8d9b671d4592bbb25f04e37",
+      "git_lf_sha256": "706ecd738648b937d808e3d7ce9c7f5af7cafa69caa6471e351de6e5066f7ec6"
     },
     {
       "path": "dashboard/service/requirement_audit.py",
@@ -332,8 +357,13 @@
     },
     {
       "path": "dashboard/service/requirement_documents.py",
-      "sha256": "67b642132e50d1aac465e6d9e4eb8b0f7a208bef0e7e7e9aea071196dbe6c10e",
-      "git_lf_sha256": "6d124b2fddf80c2bfa107159c476cfbc17439e9847b1efbee5d90b31d92efaae"
+      "sha256": "2fddd9e7a95d3481b361d14801017002d4e08c79bc7e807ed7aa6c6bdfd34a8b",
+      "git_lf_sha256": "4c14e35692b855260de2dbbcaaef70c52d53ade9cb7f76ffee1e510cf90a0b1d"
+    },
+    {
+      "path": "dashboard/service/requirement_hwpml.py",
+      "sha256": "a7426f3a1783b6d86c72f94a5b7acab72a83d419f6eff1356e4165364192fec5",
+      "git_lf_sha256": "a7426f3a1783b6d86c72f94a5b7acab72a83d419f6eff1356e4165364192fec5"
     },
     {
       "path": "dashboard/service/requirement_jobs.py",
@@ -347,28 +377,33 @@
     },
     {
       "path": "dashboard/service/requirement_overlay.py",
-      "sha256": "6f1b53f62580b1588cfec31a2615e0c3e5e73f2d5994b063a3737391b7b20f24",
-      "git_lf_sha256": "1c871fee95c90713cfcf821abf3ef4178792fb9728bbf69b95389628150b609c"
+      "sha256": "866df3adabd4b0d0d5377a88607437cce2893bc1efe87033b39206bc96d191dd",
+      "git_lf_sha256": "b68629ebd532aeffb973682101fdfb6b3fabf7c285994ade63688b1ad0adc223"
+    },
+    {
+      "path": "dashboard/service/requirement_presentation.py",
+      "sha256": "e50794f717f9a5062495c0847ab71ac55f24b991944be4564260ce18f38bc46b",
+      "git_lf_sha256": "e50794f717f9a5062495c0847ab71ac55f24b991944be4564260ce18f38bc46b"
     },
     {
       "path": "dashboard/service/requirement_projection.py",
-      "sha256": "f156da625beb23248d4a57014125b564c9d7fb84152a7c96d0d6e1eeef91e27c",
-      "git_lf_sha256": "e381a81227f778f731f7d8d8bfe93cb0826a88d78d00c98352ff0b35e4c0c865"
+      "sha256": "eb154c3cead46faba50fceb556f9013401ff70ff2d901155b3a3fbba1c837788",
+      "git_lf_sha256": "450217c8a47e91bb56276237b7580f1b8d5c871d28ba2c0382cf19b8331f4d02"
     },
     {
       "path": "dashboard/service/requirement_queue.py",
-      "sha256": "4994566fad52766472341ad3403ae4066f8d4c6cef4b46de71dee6d0d3bd6ade",
-      "git_lf_sha256": "75a72c9da52b689f230ca21f69e617ee6c19ceeb14db66bd848a6d65eab3070d"
+      "sha256": "20aa2e040073936b99f804078ed6e6d86b7b690d3d013d7935c6e89a99f4049c",
+      "git_lf_sha256": "a1cd56ff4640290ae0cb32e87baf777ce9b78343eee84bc1cbbf58c462dbf9f8"
     },
     {
       "path": "dashboard/service/requirement_structure.py",
-      "sha256": "6baaa85ea4a60d2012e68d5a2192ff7899b49771f6904e87bf0c94b8866dbba8",
-      "git_lf_sha256": "64e869e8941cf1fd524dd0130d1556baa51e55a536b23f611c3bfef9c8d86303"
+      "sha256": "9ef3b319d8690b39b53906b21c4e21cebaf84c716276765cd1d2ca8adb54162a",
+      "git_lf_sha256": "2670c5940aae83579cd9a3b968768849410936040c0aa34fed08faf8a429af90"
     },
     {
       "path": "dashboard/service/requirement_summary.py",
-      "sha256": "596501ffe2970495d8b71f26cb214364da05ecd172d2adc40c2348755906939b",
-      "git_lf_sha256": "3f973018a07ef52ff3d06f920dd1cb5ca2a35401c21e1f6159317c6ecc06811f"
+      "sha256": "8589f3d016231502c70e760281bf4c03e3ca54c4e5a2acbf3a260956261285e6",
+      "git_lf_sha256": "e757515a034bfccc4348459f5891c92b1d3b833a225dbae5cc2335fcbaab552f"
     },
     {
       "path": "dashboard/service/review_identity.py",
@@ -377,8 +412,8 @@
     },
     {
       "path": "dashboard/service/source.py",
-      "sha256": "5cba7be72aaaf7c95e97e965b6bf29f5506280e0315aeb9ace3e2a75ac4f002a",
-      "git_lf_sha256": "8539c49f320e1b20fd167b0462663f3afa4523e1fc536f7d7a1751391433999f"
+      "sha256": "1507f1966462e08590fdfb97a85b8ac5eab83711b077b2c754fddd58b431ff75",
+      "git_lf_sha256": "bff02894dcf8e99267f1c3150f7901bc10666891a609a50f434cea6ee6ed2660"
     },
     {
       "path": "dashboard/streamlit_app.py",
@@ -392,8 +427,8 @@
     },
     {
       "path": "dashboard/view/assets.py",
-      "sha256": "44f1c8089684809d64c66c589ead9c1ce09d4f2e58279e8b76452ae111046c52",
-      "git_lf_sha256": "db5c9510007eee9dfa264e7ad3992fdc6a87f0a2ae5ff49947dff18c2c244fd9"
+      "sha256": "20258dbc0aa33daf5a88a5fa9febace7f055104280f798918cdcd9e1961fbb3d",
+      "git_lf_sha256": "20258dbc0aa33daf5a88a5fa9febace7f055104280f798918cdcd9e1961fbb3d"
     },
     {
       "path": "dashboard/view/body_interactions.py",
@@ -412,8 +447,8 @@
     },
     {
       "path": "dashboard/view/comparison.py",
-      "sha256": "2218e085c7fd894a408e733b76298295eadb7f79f1e57be5889b256f4c7585b9",
-      "git_lf_sha256": "4007c4392800aa4a84431ebffcde72ddf69d990a6e244d1e5ddc493e9d3a5017"
+      "sha256": "0afde44a7bbba622eaa81b0fe8916274de97a70159309919a863bd3f14117855",
+      "git_lf_sha256": "b44181ac07303889a72d0698fbe53561915423359ac71ed8f7faa8a0b7dfcc23"
     },
     {
       "path": "dashboard/view/contract_patterns.py",
@@ -422,18 +457,23 @@
     },
     {
       "path": "dashboard/view/copy.py",
-      "sha256": "a1719b8c53676aa2bbcb62ebe00217b3b67b36f3eba56a6247cd51842ec655cf",
-      "git_lf_sha256": "ba6c387643d4e70854273075f10d66ec6e421a4cb063d68f39b6a9365a418880"
+      "sha256": "a9ca2cb1f8f10f4c5d32ec934dd9811d427e039b0e2f919fd51aa1ebb3118759",
+      "git_lf_sha256": "a9ca2cb1f8f10f4c5d32ec934dd9811d427e039b0e2f919fd51aa1ebb3118759"
     },
     {
       "path": "dashboard/view/detail_design.py",
-      "sha256": "e4b20ac774107f1719367c68adce4d18c2d850d00cbfb95ea61e3d4394292e1a",
-      "git_lf_sha256": "44865eb65ff83670eb86665a374f0f874ab56f6e43cbfca938c58750718db28e"
+      "sha256": "a7688a1e382afc4406e87cffec0b50898763ca64f1213e250241d4142dfcc643",
+      "git_lf_sha256": "a7688a1e382afc4406e87cffec0b50898763ca64f1213e250241d4142dfcc643"
     },
     {
       "path": "dashboard/view/entry_summary.py",
       "sha256": "372d0215bd987c8458e4545e08b7eea426064c98160ffc2c3e2e078023b7cc7c",
       "git_lf_sha256": "ddbf3fc6beed269763c01c12114228e74c9a11c02123401b4642b9a3ca0eb8d5"
+    },
+    {
+      "path": "dashboard/view/favorite_conditions.py",
+      "sha256": "5046dfda00f5cbfe513975a5cdca5476170abd7d1ef9cf8cbc7ac406b246842b",
+      "git_lf_sha256": "5046dfda00f5cbfe513975a5cdca5476170abd7d1ef9cf8cbc7ac406b246842b"
     },
     {
       "path": "dashboard/view/favorite_snapshot.py",
@@ -442,13 +482,13 @@
     },
     {
       "path": "dashboard/view/favorites.py",
-      "sha256": "f83d5e3edd9f44a36f829ff61dbe65d0f5cf67a8f7bad81eb1ae59578c95b131",
-      "git_lf_sha256": "d8e83f9418a70ce17bd95e217c47c44f01646fb64f69da0c36f537c3bd2186c0"
+      "sha256": "e4e0b4b1f0ff4d2e21d4d8d9527e2b9bbd70620b0c2614fdedfb61a0d60814d4",
+      "git_lf_sha256": "81b02d610347dd4aa1718a152bbdd9e1d6cc7a924962c91e07ddb424fa917503"
     },
     {
       "path": "dashboard/view/fmt.py",
-      "sha256": "fcd4bf53bea4c8b30b3fd98d071ec4eedca4b7aa018a8071ba87e39c0c74bdf6",
-      "git_lf_sha256": "af7949ede2da5d16b8854cc535577abe94ec6bc41a0b10cf6f8ff7ad5b9e8ab7"
+      "sha256": "5c2754adb4845d904bcd8f5c8de08850ad050c8d9c9fef365bf369262d8b31c4",
+      "git_lf_sha256": "5c2754adb4845d904bcd8f5c8de08850ad050c8d9c9fef365bf369262d8b31c4"
     },
     {
       "path": "dashboard/view/help.py",
@@ -477,8 +517,8 @@
     },
     {
       "path": "dashboard/view/notice_detail.py",
-      "sha256": "6ace454e7f70803248ab742dab3408eb26a11851cd794a0574d8e3bc0f447d6d",
-      "git_lf_sha256": "59f459605a92148b2389ef972018c0bcc1c6e8c4e4a674067245bf18ebed14c1"
+      "sha256": "34b9d8822da348bfa645b9eae27241e461fd83048cb005f883e8502f4d26d02d",
+      "git_lf_sha256": "6cc3e4c78c669e9956cbce4fe8a9e9d52f9b2991531462ce705eb3cb46a4f6a1"
     },
     {
       "path": "dashboard/view/notice_export.py",
@@ -492,8 +532,8 @@
     },
     {
       "path": "dashboard/view/notice_table.py",
-      "sha256": "bd8c769c1ef3643ddb17a1a5d3f05d8e787b7295db23ef687c5afbf14b279ed6",
-      "git_lf_sha256": "e2304a919e19a887d870093867686ad62dd0b36f8742c9822339e8efb961954d"
+      "sha256": "d635205d102a21d3744e58b10476de7d5e3309249d283ca459b9a8aff1c05ef4",
+      "git_lf_sha256": "454025fe57c415c92b94fa6baf4abf7df42f5af37ffa1db6394767df8e36680d"
     },
     {
       "path": "dashboard/view/participation_requirements.py",
@@ -522,8 +562,8 @@
     },
     {
       "path": "dashboard/view/requirement_evidence.py",
-      "sha256": "05702e05b505b3839d066ac538effc0508b2a492b45c60ac0dbb8fda0d40479c",
-      "git_lf_sha256": "081ef7d2209a856a33198c8e218c2ab6e92eb82dc083c462156ef347e115b9a2"
+      "sha256": "73d318549dd7f00d0d875fd4cc0fa41593b99da577df0112c66f1463f1ad0b1e",
+      "git_lf_sha256": "73d318549dd7f00d0d875fd4cc0fa41593b99da577df0112c66f1463f1ad0b1e"
     },
     {
       "path": "dashboard/view/search_summary.py",
@@ -537,13 +577,13 @@
     },
     {
       "path": "dashboard/view/store.py",
-      "sha256": "327ef2c62d4764a34b2a7db53e7cc4397cd620b7087abffd5dd83acdfe2ef6ce",
-      "git_lf_sha256": "7efcde3efe7143644999b4a7c5a0d683a71b008ab4de5935d66650013e437d76"
+      "sha256": "9e68298d45bccc5e96a5a49b75293e6a6eec4744d4455760d75a9915a16ccb3f",
+      "git_lf_sha256": "9acef85df60b13bec88483474553ea67b3697761f716c18d85a5dcbe8f339cde"
     },
     {
       "path": "dashboard/view/style.py",
-      "sha256": "11fd21b5d8d2c76bb68a7b859fdaac8dd40d96a8bc882dca1370aced1be41d84",
-      "git_lf_sha256": "f62d73dbbef9762c12da4c82e021f825e13bc41a17e5559ae9b5f34f9a0d74d0"
+      "sha256": "4df8da7e9d99b41ad3261df7691ebd2d16f3547d59e219fe0387099b047a2a9f",
+      "git_lf_sha256": "4df8da7e9d99b41ad3261df7691ebd2d16f3547d59e219fe0387099b047a2a9f"
     },
     {
       "path": "dashboard/view/table_interactions.py",
@@ -557,13 +597,13 @@
     },
     {
       "path": "packages.txt",
-      "sha256": "ea847eb5d2c60bac0a4fe91ba0ae465717fb24b7e3708e4a303fe14d866e7c05",
+      "sha256": "2d78c61c3817d71bf226f7bf8dd4011d94d85510f85116f3c4d4f037b79aa650",
       "git_lf_sha256": "2d78c61c3817d71bf226f7bf8dd4011d94d85510f85116f3c4d4f037b79aa650"
     },
     {
       "path": "README.md",
-      "sha256": "93d2dfe1e192aa2c6a8d2adb4ed36618e4b9696d1fc3621c0a8b97eafb66f7ce",
-      "git_lf_sha256": "75d7bb91cc84d6dc510fab10815e01b0cc0f2cb9d1ee38004f16b21cf28009bd"
+      "sha256": "8ce4e05a294e98483b1843578e685bf587252ce803cac6af255442c544840596",
+      "git_lf_sha256": "8ce4e05a294e98483b1843578e685bf587252ce803cac6af255442c544840596"
     },
     {
       "path": "requirements.txt",
@@ -603,12 +643,12 @@
       "scope": "Home page only: local working-tree streamlit_app.py, app_pages/home.py, view/home.py and H.264 video. Notice detail unchanged."
     }
   ],
-  "update_date": "2026-10-04",
-  "update_basis": "승인된 Gmail 사전등록·로그인 후 공고 이동 코드 업로드/원격 일치. Cloud 이메일 저장 사용자 보고. 실제 비로그인 공고/관리/Google로그인창 확인·추가계정 로그인 팀원 확인 대기. DB/API 복구 미완료. 후속 완료 문서 갱신.",
-  "source_working_tree_base": "020bf25b509685744e25e604a537c5d6490fe8f7",
-  "previous_deployment_commit": "9ad981f1b120aeba8bd14fa536d2cd34341eef13",
-  "working_tree_patch_included": false,
-  "status": "code_uploaded_cloud_email_saved_login_dialog_verified_team_login_pending",
+  "update_date": "2026-10-05",
+  "update_basis": "사용자가 승인한 최종 공고 조건 판단·즐겨찾기·비교 및 목록 조회 속도 개선. 비밀값·원문 사본·서버 코드 제외.",
+  "source_working_tree_base": "d709994fae8310799e9b4c2aacf9052ab8165c6f",
+  "previous_deployment_commit": "07f6a7b7cd8e8846eb7743f5bdf8bbab51511f27",
+  "working_tree_patch_included": true,
+  "status": "검사 후 게시할 최종 수정본",
   "source_code_commit": "020bf25b509685744e25e604a537c5d6490fe8f7",
   "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
   "deployed_code_commit": "1f9e5756181b1078135d41eb7534213343cc2936",

@@ -28,9 +28,10 @@ CONTRACT_AMOUNT_MESSAGES = {
 }
 
 
-def notice_status_label(status: str) -> str:
+def notice_status_label(status: str, conditions=None) -> str:
     """화면·내보내기 표시 문구. 판정 값·필터·저장값은 그대로 유지한다."""
-    return "▲ 원문 확인 필요" if status == "▲ 원문 확인" else status
+    return {"▲ 원문 확인": "▲ 원문 확인 필요", "● 참여 가능": "● 면허·지역 조건 충족",
+            }.get(status, status)
 
 
 def company_empty_hint(has_profile: bool) -> str:
@@ -88,13 +89,15 @@ def notice_requirement_summary(license_state, license_values, region_state, regi
 
 
 def registered_requirement_summary(license_state, license_values, region_state, region_values, *,
-                                   license_requires_review=False, region_requires_review=False) -> str:
-    """일반 목록의 등록 조건만 표시. 미확인/문서 검토 값은 공란이며 상세·즐겨찾기에는 적용하지 않는다."""
+                                   license_requires_review=False, region_requires_review=False,
+                                   license_review_status='', region_review_status='') -> str:
+    """등록 요건과 문서에서 명시적으로 확인한 요건만 표시한다. 상충·미확인 후보는 제외한다."""
     parts = []
     missing = {'', '-', '–', '미확인', 'UNKNOWN', 'NAN', 'NONE', 'NULL', '<NA>', '공고서참조', '공고문참조', '정보없음'}
-    for label, state, raw, manual in (("면허", license_state, license_values, license_requires_review),
-                                      ("지역", region_state, region_values, region_requires_review)):
-        if not isinstance(state, str) or manual is pd.NA or manual:
+    for label, state, raw, manual, review in (("면허", license_state, license_values, license_requires_review, license_review_status),
+                                      ("지역", region_state, region_values, region_requires_review, region_review_status)):
+        documented = isinstance(state, str) and state == '제한있음' and review in {'문서 제한 조건·원문 검토', '문서 지역 조건 확인·원문 검토'}
+        if not isinstance(state, str) or manual is pd.NA or (manual and not documented):
             continue
         if state == '조건없음':
             parts.append(f'{label} 제한 없음')

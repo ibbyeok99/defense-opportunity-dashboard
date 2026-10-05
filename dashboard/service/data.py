@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
+import hashlib
+import pickle
 
 from service.source import (NOTICE_TTL, STATS_TTL, SOURCE, read_metadata, read_pending_institutions,
                             read_defense_institutions, PUBLISHED_TABLES)
@@ -249,11 +251,36 @@ def _base_notices() -> pd.DataFrame:
     return df
 
 
-def notices() -> pd.DataFrame:
-    """공고 원본은 캐시하고 근거 보완은 매 호출 재연결해 조회 직후 반영한다."""
+def _complete_hash(value):
+    """행 표본 대신 전체 입력으로 키를 만든다. 사본 변경·중간 행 정정도 반영한다."""
+    return hashlib.sha256(pickle.dumps(value, protocol=5)).hexdigest()
+
+
+@st.cache_data(ttl=NOTICE_TTL, max_entries=4, show_spinner=False,
+               hash_funcs={pd.DataFrame: _complete_hash, list: _complete_hash})
+def _cached_requirement_overlay(frame, records, processing_version, include_details=True):
     from service.requirement_overlay import overlay
+    out = overlay(frame, records)
+    if not include_details:
+        # 목록에서 쓰지 않는 원문 사본을 캐시에 넣었다가 매번 복사하지 않는다.
+        out['requirement_evidence'] = pd.Series([None] * len(out), index=out.index, dtype=object)
+        for kind in ('license', 'region'):
+            out[kind + '_evidence_quote'] = ''
+    return out
+
+
+def _connect_requirements(frame, records, *, include_details=True):
+    from service.requirement_overlay import fresh
+    from service.notice_requirements import SCHEMA
+    # キャ시를 반환하기 전에도 24시간 시효를 확인한다. 조건 규칙 버전도 재사용 키에 포함한다.
+    valid = [record for record in records if fresh(record)]
+    return _cached_requirement_overlay(frame, valid, SCHEMA, include_details)
+
+
+def notices() -> pd.DataFrame:
+    """입력과 조건 규칙이 같으면 결합을 재사용하고 새 근거는 다음 조회부터 반영한다."""
     from service.source import read_requirement_evidence
-    return overlay(_base_notices(), read_requirement_evidence())
+    return _connect_requirements(_base_notices(), read_requirement_evidence())
 
 
 @st.cache_data(ttl=NOTICE_TTL, show_spinner=False)
@@ -282,17 +309,24 @@ def _stored_notices() -> pd.DataFrame:
 
 
 def stored_notices() -> pd.DataFrame:
-    """DB와 저장된 공식 API 값만. 원문/첨부 읽기·문서 추출·네트워크 조회는 하지 않는다."""
-    from service.requirement_overlay import overlay
-    from service.source import read_api_requirement_evidence
+    """DB·저장 API와 로컬 수집 사본을 연결한다. 공고 원문·첨부를 새로 조회하지 않는다."""
+    from service.source import read_api_requirement_evidence, read_requirement_evidence
     stored = _stored_notices()
     records = read_api_requirement_evidence()
-    out = overlay(stored, records) if records else stored
+    # 로컬에 이미 저장된 원문 수집 결과를 같은 식별자·제목·마감일로 검증한다.
+    # 저장소가 없는 Cloud에서는 기존 API 자료만 사용한다.
+    stored = _connect_requirements(stored, records, include_details=False) if records else stored
+    documents = read_requirement_evidence()
+    out = _connect_requirements(stored, documents, include_details=False) if documents else stored
     for kind in ('license', 'region'):
         missing = out[kind + '_state'].eq('미확인')
         out.loc[missing, kind + '_review_status'] = '상세 확인'
     # DB에만 있는 값도 검색 대상이다. 문서 발췌/조건 후보는 목록에 넣지 않는다.
     out['requirement_search_text'] = out.license_values + ' ' + out.region_values
+    # 일반 목록에는 원문 발췌와 첨부 읽기 세부 정보를 싣지 않는다.
+    out['requirement_evidence'] = pd.Series([None] * len(out), index=out.index, dtype=object)
+    for kind in ('license', 'region'):
+        out[kind + '_evidence_quote'] = ''
     return out
 
 
@@ -309,9 +343,15 @@ def favorite_notices(ids) -> pd.DataFrame:
     return overlay(selected,[r for r in records if r is not None])
 
 
+NOTICE_CACHE_EPOCH = 0
+
+
 def _clear_notices():
+    global NOTICE_CACHE_EPOCH
+    NOTICE_CACHE_EPOCH += 1
     _base_notices.clear()
     _stored_notices.clear()
+    _cached_requirement_overlay.clear()
 
 
 notices.clear = _clear_notices

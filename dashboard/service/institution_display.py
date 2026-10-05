@@ -3,13 +3,22 @@
 import re
 
 
+def public_reason(value: str) -> str:
+    """수동판정 표식은 공개용 날짜만 남긴다. 담당자 정보는 원본에 보존한다."""
+    def manual_marker(match):
+        dates = re.findall(r"\d{4}-\d{2}-\d{2}", match[1])
+        return f"[수동판정 {dates[-1]}]" if dates else "[수동판정]"
+
+    return re.sub(r"\[수동판정(?=\s|\])([^\[\]]*)\]", manual_marker, str(value))
+
+
 def roles_label(value: str) -> str:
     return ", ".join(dict.fromkeys(part.strip() for part in str(value).split("|") if part.strip()))
 
 
 def reason_label(value: str) -> str:
     """대장에 기록된 근거의 표현만 변환한다. 새로운 사실·확정 판정을 만들지 않는다."""
-    text = " ".join(str(value).split())
+    text = " ".join(public_reason(value).split())
     if text.startswith("기존 검토완료 참조자료(") and text.endswith("기관코드 일치, 최종판정=Y"):
         return "검토 완료된 기준 목록과 기관코드 일치"
     unit = re.fullmatch(r"기관코드가 군부대 전용 코드 패턴\(ZD0#####\)이며 기관명에 부대성 표현\('(.+)'\) 포함", text)

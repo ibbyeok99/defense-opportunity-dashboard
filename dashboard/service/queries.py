@@ -12,8 +12,10 @@ import pandas as pd
 
 from service import data, metrics
 from service.eligibility import judge, split_values
+from service.company_match import matches_company, matching_dimensions
+from service.notice_date_policy import notice_kind
 from service.filters import YEAR_RANGE, ItemFilter, NoticeFilter, OverviewFilter, Profile
-from service.notice_sort import sort_by_deadline
+from service.notice_sort import sort_by_deadline, sort_notices
 from service.notice_saved_details import saved_notice_details
 from service.requirement_overlay import usable_values
 
@@ -41,7 +43,9 @@ def agency_option_labels() -> dict[str, dict[str, str]]:
         name_col, code_col = f"{stem}_agency_name", f"{stem}_agency_code"
         mapping = {}
         if code_col in frame:
-            for name, rows in frame.groupby(name_col, sort=False):
+            # 같은 기관이 공고마다 반복된다. 전체 행·원문 열 대신 고유 이름/코드만 묶는다.
+            pairs = frame[[name_col, code_col]].drop_duplicates()
+            for name, rows in pairs.groupby(name_col, sort=False):
                 codes = rows[code_col].dropna().astype(str).drop_duplicates().tolist()
                 mapping[name] = f"{name} ({', '.join(codes)})" if codes else name
                 mapping.update({code: f"{name} ({code})" for code in codes})
@@ -75,10 +79,15 @@ def find_notices(f: NoticeFilter, profile: Profile, now: datetime, *, stored_onl
         out = out[data.agency_mask(out, f.agency_role, f.agencies)]
     out = out.copy()
     out["status"] = [judge(r, profile.region, list(profile.licenses))[0] for r in out.to_dict("records")]
+    # 회사 입력은 검색 결과를 줄이지 않는다. 진행 중인 일치 공고만 우선 표시한다.
+    out["company_match"] = [matches_company(r, profile) and notice_kind(r) != '취소공고'
+                            for r in out.to_dict("records")]
+    out["company_match"] &= (out["bid_close_date"].ge(now) & out["notice_date"].le(now))
+    out["company_match"] &= (out["bid_close_date"] - out["notice_date"]).le(pd.Timedelta(days=365))
     if f.judge:
         out = out[out["status"].isin(f.judge)]
     out["dday"] = (out["bid_close_date"].dt.normalize() - pd.Timestamp(now.date())).dt.days
-    return sort_by_deadline(out, now)
+    return sort_notices(sort_by_deadline(out, now), None)
 
 
 def only_status(found: pd.DataFrame, statuses: list[str]) -> pd.DataFrame:
@@ -113,6 +122,8 @@ def notice_detail(notice_id: str, profile: Profile, *, notice=None, include_comp
         ["지역", ", ".join(split_values(n["region_values"])) or n["region_state"], ", ".join(profile.region) or "미입력",
          reg.status, reg.reason],
     ], columns=["구분", "요구 조건", "내 조건", "판단", "이유"])
+    names_match = matching_dimensions(n, profile)
+    conditions['입력조건일치'] = [names_match['license'], names_match['region']]
     # 회사 입력 부족과 공고 근거 검토는 별개다. 안내를 추가하되 보수적인 판정은 유지한다.
     conditions["입력 안내"] = [
         f"회사 {label}를 입력해 비교하세요."

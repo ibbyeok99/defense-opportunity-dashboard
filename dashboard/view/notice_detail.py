@@ -18,7 +18,8 @@ from view.participation_requirements import participation_panel
 from view.loading import read
 
 
-@st.dialog("공고 상세", width="large", on_dismiss="rerun")
+# 창을 닫을 때 이미 표시된 목록을 유지한다. 검색·회사 조건 변경 시에는 정상 재조회한다.
+@st.dialog("공고 상세", width="large", on_dismiss="ignore")
 def show_detail(det: dict, today, color: str = "gray", evidence_checker=None, on_evidence_updated=None,
                 evidence_reader=None, detail_updater=None, competition_loader=None):
     render = st.fragment(run_every='1s' if evidence_reader else None)(_render_detail)
@@ -52,7 +53,7 @@ def _render_detail(det, today, color='gray', evidence_checker=None, on_evidence_
             with st.container(horizontal=True, vertical_alignment="center", gap="small",
                               key="notice_detail_metadata"):
                 st.html(f'<div class="detail-meta"><span class="detail-deadline {urgent}">{escape(dday_text(d))}</span>'
-                        f'<span class="detail-verdict {verdict(status)[1]}">{escape(notice_status_label(status))}</span>'
+                        f'<span class="detail-verdict {verdict(status)[1]}">{escape(notice_status_label(status, conditions))}</span>'
                         f'<span class="detail-meta-text">{escape(str(n["procurement_type"]))} · {escape(str(cat_name))}</span></div>', width="stretch")
                 st.button("즐겨찾기 해제" if n["notice_id"] in store.favorites() else "즐겨찾기에 추가",
                           icon=":material/star:" if n["notice_id"] in store.favorites() else ":material/star_border:",
@@ -141,7 +142,7 @@ def _render_detail(det, today, color='gray', evidence_checker=None, on_evidence_
             rep = Report(n["notice_name"], f"{n['procurement_type']} · {cat_name} · {dday_text(d)}",
                          footer="Frontline Data · 국방 조달 탐색")
             rep.kv([("마감", n["bid_close_date"].strftime("%Y-%m-%d %H:%M") if pd.notna(n["bid_close_date"]) else "–"),
-                    ("수요기관", n["demand_agency_name"]), ("종합 판단", notice_status_label(status))])
+                    ("수요기관", n["demand_agency_name"]), ("종합 판단", notice_status_label(status, conditions))])
             report_conditions = conditions.drop(columns=['입력 안내'], errors='ignore').copy()
             report_conditions["판단"] = [condition_verdict(row)[0] if row.get('입력 안내')
                                          else notice_status_label(row['판단'])

@@ -10,6 +10,7 @@ import json
 import os
 import hashlib
 import uuid
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -60,14 +61,43 @@ def requirement_evidence_directory() -> Path:
     return REPO_ROOT / "data" / "dashboard_requirement_evidence"
 
 
+def _evidence_input_hash(value):
+    import pickle
+    return hashlib.sha256(pickle.dumps(value, protocol=5)).hexdigest()
+
+
+@st.cache_data(ttl=NOTICE_TTL, max_entries=2, show_spinner=False, hash_funcs={list: _evidence_input_hash})
+def _prepare_requirement_records(records, processing_version):
+    """최신 원문이 같으면 의미 해석을 재사용한다. 사본·규칙 변경은 전체 입력 키로 구분한다."""
+    from service.requirement_overlay import prepare
+    prepared = []
+    for value in records:
+        try:
+            prepared.append(prepare(value, value['procurement_type']))
+        except (ValueError, TypeError, KeyError, AttributeError):
+            continue
+    return prepared
+
+
 @st.cache_data(ttl=60, max_entries=2, show_spinner=False)
 def read_requirement_evidence(*, include_expired=False, legacy_only=False) -> list[dict]:
-    """공개 근거 보완 사본만 읽는다. 잘못된 파일은 요건으로 사용하지 않는다."""
-    from service.requirement_overlay import fresh, prepare
+    """공고별 최신 사본만 해석한다. 과거 사본은 보존하고 잘못된 파일은 사용하지 않는다."""
+    import re
+    from service.requirement_overlay import fresh, identity
     records = {}
     directory = requirement_evidence_directory()
     if not directory.exists():
         return []
+    preferred = {}
+    for index in (directory / 'latest').glob('*.json'):
+        try:
+            if index.stat().st_size > 2048:
+                continue
+            filename = json.loads(index.read_text(encoding='utf-8')).get('file', '')
+            if re.fullmatch(r'(?:public_)?[0-9a-f]{64}\.json', filename):
+                preferred[index.stem] = filename
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
     for path in directory.glob("*.json"):
         if legacy_only and path.name.startswith('public_'):
             continue
@@ -77,13 +107,17 @@ def read_requirement_evidence(*, include_expired=False, legacy_only=False) -> li
             value = json.loads(path.read_text(encoding="utf-8"))
             if not include_expired and not fresh(value):
                 continue
-            value = prepare(value, value["procurement_type"])
-            key = (value["procurement_type"], value["notice_number"], value["notice_order"])
-            if key not in records or value["checked_at"] > records[key]["checked_at"]:
-                records[key] = value
-        except (OSError, ValueError, TypeError, KeyError):
+            if not isinstance(value, dict) or value.get('error'):
+                continue
+            key = identity(value)
+            stamp = value['checked_at']
+            priority = (stamp, preferred.get(hashlib.sha256('|'.join(key).encode()).hexdigest()) == path.name)
+            if key not in records or priority > records[key][0]:
+                records[key] = (priority, value)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
             continue
-    return list(records.values())
+    from service.notice_requirements import SCHEMA
+    return _prepare_requirement_records([value for _, value in records.values()], SCHEMA)
 
 
 @st.cache_data(ttl=60, max_entries=1, show_spinner=False)
@@ -361,7 +395,16 @@ def save_requirement_queue(value):
     temporary = path.parent / (uuid.uuid4().hex + '.tmp')
     try:
         temporary.write_text(payload, encoding='utf-8')
-        os.replace(temporary, path)
+        # Windows에서는 짧은 읽기 중에도 파일 교체가 거절될 수 있다.
+        # 원본을 지우지 않고 같은 임시 파일의 원자적 교체만 제한적으로 재시도한다.
+        for attempt in range(6):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError:
+                if attempt == 5:
+                    raise
+                time.sleep(0.05 * (2 ** attempt))
     finally:
         temporary.unlink(missing_ok=True)
 

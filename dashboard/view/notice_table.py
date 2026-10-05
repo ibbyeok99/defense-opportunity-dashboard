@@ -37,6 +37,7 @@ th.status {width:145px;}
 .requirement-line + .requirement-line {margin-top:8.8px;}
 .requirement-line {line-height:1.55;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px;}
 .requirement-label {font-weight:700;white-space:nowrap;}
+.company-match {display:inline-block;margin-bottom:8px;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--st-green-text-color);background:var(--st-green-background-color);}
 .requirement-values {min-width:0;display:flex;flex-wrap:wrap;gap:3px 8px;}
 .requirement-item {max-width:100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .requirement-unknown {grid-column:1 / -1;font-weight:400;white-space:nowrap;}
@@ -95,6 +96,10 @@ export default function({parentElement,data,setTriggerValue}) {
       }else if(label==='마감'&&row.upcoming){
         const badge=document.createElement('span');badge.className='deadline-pill'+(row.urgent?' urgent':'');badge.textContent=row[label];td.append(badge);
       }else if(label==='면허·지역 요건'){
+        if(row._company_match){
+          const badge=document.createElement('div');badge.className='company-match';
+          badge.textContent='조건에 맞는 공고';td.append(badge);
+        }
         row.requirement_lines.forEach(line=>{
           const div=document.createElement('div');div.className='requirement-line';div.title=line.full;
           if(line.label){

@@ -5,7 +5,8 @@ import streamlit as st
 from service import data
 from view.loading import read
 
-st.header("분류명 매칭 기준", anchor=False)
+with st.container(key="guidance_title"):
+    st.header("분류명 매칭 기준", anchor=False)
 st.caption("어떤 자료로 분류 이름을 표시하는지, 공식 품명과 어떤 차이가 있는지 확인합니다.")
 st.page_link("app_pages/item.py", label="분야별 입찰 분석으로", icon=":material/chevron_left:")
 with st.container(border=True):

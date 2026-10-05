@@ -59,6 +59,11 @@ def apply(_page_title: str = ""):
     강조색은 KPI 의미와 차트 계열을 구분하는 데 사용한다.
     """
     side = '[data-testid="stSidebar"]'
+    # 두 안내 탭의 제목 위 간격만 줄인다. 본문 카드·공통 상단의 배치는 유지한다.
+    guidance_spacing_css = """
+.st-key-dashboard_page_content { margin-top: -.5rem; }
+.st-key-guidance_title h2 { padding-top: .5rem; }
+""" if _page_title in {"분류명 매칭 기준", "국방 기관·선정 기준"} else ""
     item_context_extra_gap = ITEM_CONTEXT_TEXT_EXTRA_GAP_PX
     mode = "dark" if st.context.theme.type == "dark" else "light"
     sidebar_accent = (st.get_option(f"theme.{mode}.sidebar.primaryColor")
@@ -176,6 +181,8 @@ def apply(_page_title: str = ""):
 /* canvas 본문·헤더 동작은 유지하고, 컬럼 설정 팝업만 접근 차단한다. */
 [data-testid="stDataFrameColumnMenu"] {{ display: none !important; pointer-events: none !important; }}
 .st-key-table_scroll_hint {{ display: none; }}
+/* 안내가 숨겨져도 높이 0인 바깥 칸이 남아 행 간격(17px)이 한 번 더 생긴다. 공고 표 위에서는 그 칸도 숨긴다. */
+.st-key-notice_results_panel > *:has(> .st-key-table_scroll_hint) {{ display: none; }}
 @media (max-width: 768px) {{
   {side}[aria-expanded="true"] {{ width: 90vw !important; min-width: 90vw !important; max-width: 90vw !important; }}
 }}
@@ -210,6 +217,7 @@ def apply(_page_title: str = ""):
   padding-inline: 21px; margin-inline: -21px; width: calc(100% + 42px); max-width: none;
 }}
 {header_art_css}
+{guidance_spacing_css}
 /* 내보내기의 기준점은 제목 행이다. 제목 글자 이동값·배경 유무에 종속되지 않는다. */
 .st-key-page_heading_app {{ position: relative; padding-right: 156px; }}
 .st-key-page_heading_app > [data-testid="stLayoutWrapper"]:has(> .st-key-exports_app) {{
@@ -372,6 +380,8 @@ def apply(_page_title: str = ""):
 [class*="st-key-kpi_heading_"] {{ min-height: 48px; flex-wrap: nowrap !important; gap: .7rem; }}
 [class*="st-key-kpi_heading_"] [data-testid="stMarkdownContainer"] p {{ font-size: 1.045rem; font-weight: 600; line-height: 1.35; }}
 [class*="st-key-kpi_heading_"] [data-testid="stMarkdownContainer"] p {{ margin-block: 0; }}
+/* 글자 상자의 기본 음수 아래 여백(-17px)이 상자를 7px로 만들어 글자가 아이콘 중심보다 아래로 밀린다. */
+[class*="st-key-kpi_heading_"] [data-testid="stMarkdownContainer"] {{ margin-bottom: 0; }}
 [class*="st-key-kpi_heading_"] [data-testid="stLayoutWrapper"] {{ min-width: 0; }}
 .dashboard-kpi-icon {{ width: 38px; height: 38px; border-radius: 10px; overflow: hidden; flex-shrink: 0; }}
 .dashboard-kpi-icon img {{ width: 38px; height: 38px; display: block; transform: scale(1.6); }}
@@ -388,6 +398,8 @@ def apply(_page_title: str = ""):
 [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"]:is(.st-key-kpi_blue_it_0, .st-key-kpi_orange_it_1, .st-key-kpi_violet_it_2, .st-key-kpi_green_it_3) {{ padding: 24px 27px !important; }}
 [class*="st-key-chart_header_"] h3 {{ font-size: 1.2rem; line-height: 1.4; padding-block: 0; margin-block: 0; }}
 [class*="st-key-card_"] [data-testid="stCaptionContainer"] p {{ color: {caption}; font-size: .9rem; line-height: 1.5; }}
+/* 비교 카드의 마감 수치는 기존 2.25rem의 90%로 표시한다. */
+[class*="st-key-card_compare_"] [data-testid="stMetricValue"] {{ font-size: 2.025rem; }}
 [data-testid="stMainBlockContainer"] [data-testid="stTabs"] [role="tablist"] {{ gap: 1.5rem; border-bottom: 1px solid {border}; }}
 [data-testid="stMainBlockContainer"] [data-testid="stTabs"] [role="tab"] {{ padding-inline: .35rem; font-weight: 600; }}
 .st-key-item_context_action {{ transform: translateX({ITEM_OPEN_NOTICE_OFFSET_X_PX}px) translateY({ITEM_OPEN_NOTICE_OFFSET_Y_PX}px); }}
@@ -469,8 +481,27 @@ def apply(_page_title: str = ""):
   background: {surface}; border-color: {border} !important; border-radius: 12px;
   box-shadow: {shadow}; padding: 18px !important;
 }}
-.st-key-notice_results_heading p {{ margin: 0; font-size: 1.08rem; }}
+.st-key-notice_results_heading p {{ margin: 0; font-size: 1.4rem; line-height: 1.3; }}
+.st-key-notice_results_heading p strong > [class*="stMarkdownColoredText"] > span {{ font-size: 1.2em; vertical-align: -.15em; }}
 .st-key-notice_results_panel [data-testid="stCaptionContainer"] p {{ font-size: .82rem; margin-block: 0; }}
+/* 카드 보기: 세로로 길게 쌓이던 항목을 머리 한 줄 + 두 칸으로 압축한다. 표시 내용은 그대로, 여백·강조만 조정. */
+.st-key-notice_results_panel [class*="st-key-card_nt_"] {{
+  padding: 9px 14px !important; gap: .3rem; box-shadow: none;
+  background: light-dark(#FBFCFE, #2D333D);
+}}
+.st-key-notice_results_panel [class*="st-key-card_nt_"] [data-testid="stMarkdownContainer"] p {{ margin: 0; }}
+.st-key-notice_results_panel [class*="st-key-nt_card_head_"] {{ gap: .5rem; }}
+.st-key-notice_results_panel [class*="st-key-nt_card_head_"] strong {{ font-size: 1.08rem; line-height: 1.35; }}
+.st-key-notice_results_panel [class*="st-key-nt_card_info_"] [data-testid="stMarkdownContainer"] p {{ font-size: .93rem; line-height: 1.45; }}
+.st-key-notice_results_panel [class*="st-key-nt_card_info_"] [data-testid="stCaptionContainer"] p {{ font-size: .8rem; line-height: 1.4; }}
+.st-key-notice_results_panel [class*="st-key-nt_card_req_"] {{
+  background: light-dark(#F0F4FA, #343C49); border-radius: 8px; padding: 5px 12px;
+}}
+.st-key-notice_results_panel [class*="st-key-nt_card_req_"] [data-testid="stCaptionContainer"] p {{
+  font-size: .85rem; line-height: 1.5; color: var(--st-text-color);
+}}
+.st-key-notice_results_panel [class*="st-key-nt_card_actions_"] button {{ min-height: 30px; padding: 0 .65rem; }}
+.st-key-notice_results_panel [class*="st-key-nt_card_actions_"] button p {{ font-size: .85rem; }}
 /* 빈 결과 안내만 세로 중앙 정렬. Markdown의 마지막 문단 여백을 제거한다. */
 .st-key-notice_empty_state [data-testid="stAlertContainer"] {{ min-height: 76px; display: flex; align-items: center; }}
 .st-key-notice_empty_state [data-testid="stAlertContentInfo"] {{ width: 100%; }}
@@ -517,6 +548,7 @@ def apply(_page_title: str = ""):
 }}
 @container dashboard_main (max-width: 900px) {{
   .st-key-table_scroll_hint {{ display: block; }}
+  .st-key-notice_results_panel > *:has(> .st-key-table_scroll_hint) {{ display: flex; }}
   [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-kpi_"]) {{ flex-wrap: wrap !important; }}
   [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-kpi_"]) > [data-testid="stColumn"] {{
     flex: 1 1 calc(50% - 1rem) !important;

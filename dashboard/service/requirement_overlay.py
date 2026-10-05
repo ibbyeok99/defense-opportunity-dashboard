@@ -56,6 +56,10 @@ def condition(result, kind):
     if result.get('projection_schema'):
         from service.requirement_projection import validate
         return validate(result)['resolved'][kind]
+    from service.notice_date_policy import cancelled
+    if cancelled(result):
+        return dict(state='미확인', values='', review='취소공고·참가 대상 아님', manual=True,
+                    quote='취소 차수의 자료는 이력으로 보존합니다. 이전 차수 조건을 상속하거나 참가 가능으로 판단하지 않습니다.')
     if any(re.search(r'제목 불일치|식별자.*불일치|공고번호·차수 불일치', str(s.get('reason', '')))
            for s in result.get('sources', [])):
         return dict(state='미확인', values='', review='근거 충돌', manual=True,
@@ -185,6 +189,7 @@ def overlay(frame, records, now=None):
         candidates = out[out.notice_id.isin({"|".join(key) for key in valid})]
     else:
         return out
+    patches = {}
     for index, row in candidates.iterrows():
         try:
             result = valid.get(identity(row))
@@ -198,11 +203,10 @@ def overlay(frame, records, now=None):
             continue
         if facts.get("bidClseDt") and pd.to_datetime(facts["bidClseDt"], errors="coerce") != row.get("bid_close_date"):
             continue
-        out.at[index, "requirement_evidence"] = result
-        out.at[index, "requirement_checked_at"] = result["checked_at"]
+        changes = {"requirement_evidence": result, "requirement_checked_at": result["checked_at"]}
         other = list(dict.fromkeys(v['category'] for c in result.get('structured', {}).get('clauses', [])
                                   for v in c.get('other_requirements', [])))
-        out.at[index, "requirement_other_summary"] = " · ".join(other)
+        changes["requirement_other_summary"] = " · ".join(other)
         search = []
         for kind in ("license", "region"):
             resolved = condition(result, kind)  # 저장 판정 대신 현재 규칙으로 재검증한다.
@@ -211,19 +215,24 @@ def overlay(frame, records, now=None):
             review = resolved["review"]
             # 제한 플래그만 있고 값이 미확인인 원본은 실제 조건이 확인된 상태가 아니다.
             missing_original = old_state == "제한있음" and not usable_values(row.get(values_col))
-            if old_state == "미확인" or missing_original:
-                out.at[index, state_col] = resolved["state"]
-                out.at[index, values_col] = resolved["values"]
-                out.at[index, f"{kind}_requires_review"] = resolved["manual"]
+            if old_state == "미확인" or missing_original or review == '취소공고·참가 대상 아님':
+                changes[state_col] = resolved["state"]
+                changes[values_col] = resolved["values"]
+                changes[f"{kind}_requires_review"] = resolved["manual"]
             elif resolved["state"] != "미확인" and (old_state != resolved["state"] or (old_state == "제한있음" and {v.strip() for v in str(row.get(values_col, "")).split("|") if v.strip()} != {v.strip() for v in resolved["values"].split("|") if v.strip()})):
                 review = "근거 충돌"
-                out.at[index, f"{kind}_requires_review"] = True
-            out.at[index, f"{kind}_review_status"] = review
+                changes[f"{kind}_requires_review"] = True
+            changes[f"{kind}_review_status"] = review
             if review == '근거 충돌':
-                out.at[index, f"{kind}_requires_review"] = True
-            out.at[index, f"{kind}_evidence_quote"] = resolved["quote"]
+                changes[f"{kind}_requires_review"] = True
+            changes[f"{kind}_evidence_quote"] = resolved["quote"]
             search.extend([resolved["values"], resolved["quote"]])
-        out.at[index, "requirement_search_text"] = " ".join(search)
+        changes["requirement_search_text"] = " ".join(search)
+        patches[index] = changes
+    # Arrow 열은 한 셀마다 바꾸면 열 전체를 반복 복사한다. 같은 판단 결과를 열별로 한 번에 반영한다.
+    for column in {column for changes in patches.values() for column in changes}:
+        updates = pd.Series({index: changes[column] for index, changes in patches.items() if column in changes}, dtype=object)
+        out.loc[updates.index, column] = updates
     return out
 
 

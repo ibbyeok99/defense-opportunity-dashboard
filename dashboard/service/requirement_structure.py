@@ -139,6 +139,9 @@ def structure_requirements(result):
                     names.add(match.group('name'))
             for permit in MANUFACTURING_PERMIT.finditer(sentence):
                 name = re.sub(r"^.*(?:따른|따라)\s+", "", permit['name'].strip()) + " 허가"
+                # 대상 업종 없는 ‘제조업 허가’는 면허명으로 만들지 않는다. 원문은 기타 조건에 보존한다.
+                if name == '제조업 허가':
+                    continue
                 # 허가에 대한 법률 소개만으로 보유 조건을 만들지 않는다.
                 if name not in names and re.search(r"받은|보유|가진|소지", sentence[permit.end():permit.end() + 60]):
                     licenses.append(dict(name=name, code=""))

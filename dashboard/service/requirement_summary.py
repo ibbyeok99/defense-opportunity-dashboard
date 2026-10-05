@@ -7,7 +7,69 @@ PRODUCT = re.compile(r'(?:세부\s*품명\s*번호|세부\s*품명\s*분류\s*�
                      r'(?P<code>\d{10})(?!\d)(?:\s*[（(](?P<name>[^()（）\n]{1,60})[）)])?')
 
 
-def _summary(category, excerpts):
+def _explicit_summary(category, excerpts):
+    """명시된 증빙·기한·불허만 짧게 옮긴다. 예외/부정/상충은 단정하지 않는다."""
+    text = '\n'.join(excerpts)
+    compact = re.sub(r'\s+', '', text)
+    # 예외·면제·부정이 연결된 증명서는 전부 필요하다고 요약하지 않는다.
+    ambiguous = bool(re.search(r'다만|예외|제외|면제|아니|않아도|불필요|필요없|해당하지', compact))
+    if category == '공동수급·하도급':
+        conclusions = []
+        for sentence in excerpts:
+            value = re.sub(r'\s+|[.。]', '', sentence).strip('-·ㆍ①②③④⑤⑥⑦⑧⑨⑩')
+            value = re.sub(r'^(?:[가-힣]|\d+)[)．]', '', value)
+            match = re.fullmatch(r'(공동수급(?:및|과|·|ㆍ|/)하도급|공동수급|하도급)(?:은|는|을|를)?'
+                                 r'(허용하지않음|불허|허용안함|금지|허용|가능)', value)
+            if match:
+                subject = '공동수급·하도급' if '하도급' in match[1] and '공동수급' in match[1] else match[1]
+                conclusions.append(subject + (' 허용' if match[2] in {'허용','가능'} else ' 불허'))
+        # 다른 연결 문장/예외를 버리지 않는다. 같은 문장의 중복만 허용한다.
+        if conclusions and len(set(conclusions)) == 1 and not ambiguous and len(conclusions) == len(excerpts):
+            return conclusions[0]
+        return None
+    if category not in {'직접생산', '기업 규모', '확인서·인증'}:
+        return None
+    certificate = None
+    if category == '직접생산':
+        certificate = '직접생산확인증명서'
+    else:
+        match = re.search(r'(소기업|중소기업)[·ㆍ‧/\-]소상공인확인서|중소기업확인서', compact)
+        if match:
+            certificate = re.sub(r'[ㆍ‧/\-]', '·', match[0])
+    if not certificate:
+        return None
+    # 법령의 문서명 언급만으로 의무를 만들지 않는다.
+    required = any(re.search(r'(?:확인서|확인증명서).{0,1000}(?:소지한자|소지하여야|보유한자|보유하여야|제출하여야|제출해야)',
+                            re.sub(r'\s+', '', sentence)) for sentence in excerpts)
+    if not required:
+        return None
+    parts = [certificate + (' 명시 · 적용 대상·예외 확인 필요' if ambiguous else ' 보유 요구')]
+    if category == '직접생산':
+        products = list(re.finditer(r'품명\s*[:：]\s*([^()（）\n]{1,80}?)\s*[,，]\s*품번\s*[:：]\s*(\d{10})(?!\d)', text))
+        if len({product[2] for product in products}) > 1:
+            return None  # 여러 품목의 AND/OR 관계를 하나로 축약하지 않는다.
+        product = products[0] if products else None
+        if product:
+            name = product[1].strip()
+            if not re.search(r'https?://|[<>]', name, re.I):
+                parts.append(name + ' (' + product[2] + ')')
+    for label, pattern in (
+        ('발급: 전자입찰서 제출마감일 전일까지', r'전자입찰서제출마감일전일까지발급'),
+        ('발급: 입찰참가자격 등록마감일까지', r'입찰참가자격등록마감일까지발급'),
+    ):
+        if re.search(pattern, compact):
+            parts.append(label if not ambiguous else label.replace('발급:', '발급 기준 문구:'))
+    if re.search(r'유효기간내에?있어야', compact):
+        parts.append('유효기간 내')
+    if re.search(r'공공구매.{0,80}확인이안될경우입찰참가자격이없', compact):
+        parts.append('공공구매정보망에서 확인 가능해야 함')
+    return ' · '.join(parts)
+
+
+def _summary(category, excerpts, *, allow_explicit=True):
+    explicit = _explicit_summary(category, excerpts) if allow_explicit else None
+    if explicit:
+        return explicit
     text = '\n'.join(excerpts)
     if category == '제조물품 등록':
         matches = list(PRODUCT.finditer(text))
@@ -69,6 +131,9 @@ def summarize_participation(result):
     """
     if not isinstance(result, dict):
         return []
+    from service.notice_date_policy import cancelled
+    if cancelled(result):
+        return []
     if result.get('projection_schema'):
         from service.requirement_projection import validate
         return [dict(item, excerpts=[], evidence=[]) for item in validate(result).get('participation_summary', [])]
@@ -105,7 +170,8 @@ def summarize_participation(result):
                     method=evidence.get('method', 'text'),
                     truncated=bool(evidence.get('excerpt_truncated'))))
     for entry in entries.values():
-        entry['summary'] = _summary(entry['category'], entry['excerpts'])
+        uncertain = any(e['method'] == 'ocr' or e['truncated'] for e in entry['evidence'])
+        entry['summary'] = _summary(entry['category'], entry['excerpts'], allow_explicit=not uncertain)
     order = ['제조물품 등록', '직접생산', '기업 규모', '확인서·인증']
     return sorted(entries.values(), key=lambda entry: (order.index(entry['category'])
                   if entry['category'] in order else len(order)))

@@ -81,7 +81,7 @@ def project(record, pt, number, order, source_hash, detail_hash):
     key = request_identity(pt, number, order, source_hash, detail_hash)
     if not isinstance(record, dict) or identity(record) != key or not fresh(record):
         return None
-    if not re.fullmatch(r'g2b-requirement-evidence-v(?:[4-9]|1[0-6])', str(record.get('schema', ''))):
+    if not re.fullmatch(r'g2b-requirement-evidence-v(?:[4-9]|1[0-9]|20)', str(record.get('schema', ''))):
         return None
     # PC 감시기는 source hash, 상세 조회는 detail hash로 변경 공고를 구분한다.
     if not (record.get('detail_fingerprint') == detail_hash or record.get('source_fingerprint') == source_hash):
