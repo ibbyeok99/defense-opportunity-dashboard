@@ -12,6 +12,7 @@ import streamlit as st
 
 from service import data, admin_access
 from service import automatic_review
+from service import publish_status
 from service import source
 from service.operations import warning, WARNING_HOURS
 from view.reference_table import reference_table
@@ -23,9 +24,9 @@ if not admin_access.authorized():
 
 st.markdown("### 관리자")
 meta = read('관리자 데이터 기준을 확인하는 중…', data.metadata)
-st.info(f"DB 게시 데이터 기준 시각: {str(meta.get('data_as_of', '확인 필요'))[:16]}",
+st.info(f"통계 자료 기준: {publish_status.data_range(meta)} · DB 최근 반영 확인: {publish_status.applied_at(meta)}",
         icon=":material/science:")
-st.caption('서버 수집의 최근 성공 시각은 아래 ‘수집·게시 상태’에서 확인합니다.')
+st.caption('변경된 부분만 갱신하므로 통계별 자료 기준 시각은 다를 수 있습니다. 서버 수집의 최근 성공 시각은 아래 ‘수집·게시 상태’에서 확인합니다.')
 tab_operations, tab_pending, tab_automatic = st.tabs(["운영 상태", "기관 판정 대기", "자동 판별 기관 검토"])
 
 with tab_operations, st.container(border=True):
@@ -217,7 +218,11 @@ with tab_automatic:
 with tab_operations, st.container(border=True):
     st.markdown("**:material/monitor_heart: 수집·게시 상태**")
     meta = data.metadata()
-    st.markdown(f"- 통계 게시 버전: `{meta.get('run_id', '–')}` (기준 {str(meta.get('data_as_of', '–'))[:16]})")
+    st.markdown(f"- 통계 게시 세대: `{meta.get('run_id') or '확인 필요'}`")
+    st.markdown(f"- 통계 자료 기준: {publish_status.data_range(meta)}")
+    st.markdown(f"- DB 최근 반영 확인: {publish_status.applied_at(meta)}")
+    if publish_status.applied_note(meta):
+        st.caption(publish_status.applied_note(meta))
     status = read('수집기의 최근 성공과 대기 건수를 확인하는 중…', source.read_collector_operations)
     with st.container(horizontal=True):
         success = status.get('last_success')

@@ -71,13 +71,8 @@ def metadata() -> dict:
 @st.cache_data(ttl=STATS_TTL)
 def run_checks() -> pd.DataFrame:
     if SOURCE in {"mysql", "api"}:
-        meta = metadata()
-        return pd.DataFrame([
-            {"검사 항목": "대시보드 지표 테이블 조회", "통과": meta.get("required_tables_present", False),
-             "결과": f"{len(PUBLISHED_TABLES)}개 핵심 테이블"},
-            {"검사 항목": "게시 버전 일관성", "통과": meta.get("version_consistent"),
-             "결과": str(meta.get("run_id") or "게시 버전 확인 불가")},
-        ])
+        from service.publish_status import check_rows
+        return pd.DataFrame(check_rows(metadata()))
     return _read("실행점검.csv")
 
 

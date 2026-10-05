@@ -4,6 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from service import data, admin_access
+from service import publish_status
 from service import source
 from service.requirement_audit import audit_requirements
 from view.fmt import CAVEATS, pct
@@ -18,25 +19,54 @@ st.markdown("### 이 대시보드의 데이터 기준")
 from view.loading import read
 meta = read('게시 버전과 데이터 기준을 확인하는 중…', data.metadata)
 with st.container(horizontal=True, border=True, key="card_quality_metadata"):
-    st.metric("통계 게시 버전", str(meta.get("snapshot_id", "–")), help=meta.get("run_id"))
-    st.metric("데이터 기준 시각", str(meta.get("data_as_of", "–"))[:16],
-              help="분석 데이터가 포함하는 마지막 기준 시각입니다. 실시간 수집의 마지막 성공 시각은 아닙니다.")
-    version = meta.get('version_consistent')
-    st.metric("게시 버전 일관성", '확인' if version is True else '불일치' if version is False else '미확인')
-    basis = str(meta.get("contract_population_basis", ""))
-    scope_label = "분석용 대표 계약" if "ANALYTICAL_REPRESENTATIVES" in basis else "확인 필요"
-    st.metric("계약 집계 범위", scope_label,
-              help="전체 원천 계약이 아니라 분석 규칙을 통과한 대표 계약 기준입니다.")
-if meta.get('version_consistent') is False and data.SOURCE in {'mysql', 'api'}:
-    st.info("일부 데이터만 갱신하면 표마다 게시 버전이 다를 수 있습니다. 버전 차이만으로 오류를 확정하지 않습니다. 운영 담당자가 DB 반영 이력과 갱신 범위를 대조해야 합니다.")
-elif meta.get('version_consistent') is None:
-    st.info('게시 행·버전 값이 없거나 조회가 실패해 일관성을 확인하지 못했습니다. 버전 불일치로 확정하지 않습니다.')
+    st.metric("통계 게시 세대", (meta.get("snapshot_id") or "확인 필요")[:8] + ("…" if meta.get("snapshot_id") else ""),
+              help=meta.get("run_id") or "활성 적재 이력을 확인하지 못했습니다.")
+    low, high = meta.get("data_as_of_min"), meta.get("data_as_of_max")
+    st.metric("통계 자료 기준", (f"{low[:10]} ~ {high[:10]}" if low and high and low[:10] != high[:10]
+                                 else publish_status.short_time(high or meta.get("data_as_of"))[:10]),
+              help=f"게시 통계 행의 자료 기준 시각 범위: {publish_status.data_range(meta)}. 변경된 부분만 갱신해 표마다 다를 수 있으며, "
+                   "수집기의 마지막 성공 시각이 아닙니다.")
+    st.metric("DB 최근 반영 확인", publish_status.applied_at(meta)[:16],
+              help="완료된 DB 적재 이력의 마지막 시각입니다. 변경분이 없는 회차도 포함합니다. " + publish_status.applied_note(meta))
+    # 확인되지 않은 값은 카드로 보여주지 않는다(점검 표와 세부 영역에는 그대로 남는다). 정상·실패만 카드로 표시한다.
+    if publish_status.status_label(meta) in {"정상", "실패"}:
+        st.metric("게시 상태", publish_status.status_label(meta),
+                  help="통계표 행의 세대가 소유 대장·적재 이력과 맞는지 읽기 전용으로 대조한 결과입니다.")
+    basis = str(meta.get("contract_population_basis") or "")
+    if "ANALYTICAL_REPRESENTATIVES" in basis:
+        st.metric("계약 집계 범위", "분석용 대표 계약",
+                  help="전체 원천 계약이 아니라 분석 규칙을 통과한 대표 계약 기준입니다.")
+if data.SOURCE in {'mysql', 'api'}:
+    if not publish_status.has_detail(meta):
+        st.info('게시 세대 정보를 제공하지 않는 구버전 응답입니다. 자료 기준 범위와 소유 대장 대조는 확인 필요로 둡니다.')
+    else:
+        if meta.get('mixed_generations'):
+            st.info('변경된 부분만 갱신하므로 통계별 자료 기준 시각과 게시 세대는 표마다 다를 수 있습니다. 여러 세대가 함께 있는 것 자체는 오류가 아닙니다.')
+        problems = publish_status.exception_tables(meta)
+        hard = [t for t, (is_hard, _) in problems.items() if is_hard]
+        if hard and publish_status.convention_verified(meta):   # 세대 대응 규약을 검증한 뒤에만 확정 문제로 올린다
+            st.error('소유 대장 대조 예외: ' + ', '.join(sorted(hard)) + '. 소유 대장에 없거나 행 수가 다른 파티션이 있습니다.')
+        ledger = meta.get('ledger') or {}
+        if ledger.get('state') != '확인':
+            st.info('활성 적재 이력을 확인하지 못했습니다: ' + (ledger.get('reason') or '사유 미상') + '. 게시 상태를 정상으로 표시하지 않습니다.')
+        elif publish_status.applied_note(meta):
+            st.caption(publish_status.applied_note(meta))
 if meta.get('table_version_states'):
-    with st.expander('표별 게시 버전 확인 결과'):
+    with st.expander('표별 게시 세대·자료 기준 확인 결과'):
+        differing = publish_status.exception_tables(meta)
+        if differing:
+            st.caption('행 run_id와 적재 대장 run_id가 다른 파티션이 있는 표: ' + ', '.join(sorted(differing)) +
+                       ' — 행의 run_id는 묶음을 계산한 실행(생성 세대), 적재 대장의 run_id는 DB에 적재한 실행(적재 세대)일 수 있어 '
+                       '다르다는 것만으로 오류로 판단하지 않습니다. 매니페스트의 파일 참조·해시·행 수로 대응을 확인하기 전까지 정상/실패를 정하지 않고 확인 필요로 둡니다.')
         version_rows = []
         for table, state in meta['table_version_states'].items():
-            values = meta.get('table_versions', {}).get(table) or ['–']*4
-            version_rows.append(dict(표=table, 확인=state, 게시버전=values[0], 데이터버전=values[1], 지표버전=values[2], 기준시각=values[3]))
+            summary = (meta.get('table_generations') or {}).get(table) or {}
+            check = (meta.get('ownership_checks') or {}).get(table) or {}
+            version_rows.append(dict(
+                표=table, 확인=state, 세대수=summary.get('generations', '–'), 행수=summary.get('rows', '–'),
+                자료기준_최소=publish_status.short_time(summary.get('as_of_min')) if summary else '–',
+                자료기준_최대=publish_status.short_time(summary.get('as_of_max')) if summary else '–',
+                대장_예외=(max(check.get('wrong_owner', 0), check.get('unverified_run', 0)) + check.get('missing_owner', 0) + check.get('wrong_count', 0)) if check.get('checked') else '–'))
         st.dataframe(pd.DataFrame(version_rows), hide_index=True)
 
 with st.container(border=True, key="card_quality_rules"):

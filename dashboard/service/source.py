@@ -580,51 +580,228 @@ def read_metadata() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def mysql_metadata(query) -> dict:
-    """로컬과 API가 동일한 게시 버전 검사·메타데이터 계약을 사용한다."""
-    versions, states = [], {}
-    for table in PUBLISHED_TABLES:
-        try:
-            row = query(
-                f"SELECT run_id, data_version, metric_version, data_as_of "
-                f"FROM `{table}` LIMIT 1"
-            )
-        except Exception:
-            versions.append((table, None))
-            states[table] = '조회 실패'
-            continue
-        if row.empty:
-            versions.append((table, None))
-            states[table] = '게시 행 없음'
-        else:
-            values = row.iloc[0].tolist()
-            if len(values) != 4 or any(pd.isna(v) or str(v).strip() in {'','None','nan','NaT'} for v in values):
-                versions.append((table, None))
-                states[table] = '버전 값 미확인'
-            else:
-                versions.append((table, tuple(str(v) for v in values)))
-                states[table] = '버전 확인'
+_BLANK_TOKENS = {'', 'none', 'nan', 'nat'}
+# 행의 run_id는 "그 묶음을 계산한 실행"(생성 세대), 소유 대장·적재 이력의 run_id는 "DB에 적재한 실행"(적재 세대)일 수 있다.
+# 변하지 않은 파일은 이전 실행의 파일 참조를 유지하므로 두 값이 다른 것이 정상 규약일 수 있다
+# (docs/데이터_전처리/전처리A/S3_정제_지표_JSON_운영연결.md 5절). 매니페스트의 파일 참조·해시·행 수로 대응을 검증하기 전까지는
+# 이 대조로 정상/실패를 판정하지 않는다. 검증을 마치면 True로 바꾼다.
+LEDGER_CONVENTION_VERIFIED = False
+_OWNERSHIP_FIELDS = ('no_ledger_record', 'ledger_run_differs', 'row_count_differs', 'row_run_not_in_load_ledger')
 
-    populated = [version for _, version in versions if version is not None]
-    version_consistent = (False if len(set(populated)) > 1 else
-                          True if len(populated) == len(PUBLISHED_TABLES) else None)
-    version = populated[0] if populated else (None, None, None, None)
+
+def _clean_value(value):
+    """빈 값·NaN·NaT를 None으로 통일한다. 값을 추정해 채우지 않는다."""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    return None if text.casefold() in _BLANK_TOKENS else text
+
+
+def _recorded_time(value):
+    """DB에 기록된 시각을 시간대 변환 없이 그대로 읽는다. 해석할 수 없으면 None."""
+    text = _clean_value(value)
+    if text is None:
+        return None
+    stamp = pd.to_datetime(text, errors='coerce')
+    if pd.isna(stamp):
+        return None
+    return stamp.tz_localize(None) if stamp.tzinfo is not None else stamp
+
+
+def _time_text(stamp) -> str | None:
+    return None if stamp is None else stamp.strftime('%Y-%m-%dT%H:%M:%S')
+
+
+def _count(value) -> int:
+    try:
+        return 0 if pd.isna(value) else int(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _table_generation_state(query, table):
+    """한 표의 게시 세대(run_id·버전·자료 기준 시각)와 행 수를 모두 읽는다."""
+    try:
+        frame = query(
+            f"SELECT run_id, data_version, metric_version, data_as_of, COUNT(*) AS row_count "
+            f"FROM `{table}` GROUP BY run_id, data_version, metric_version, data_as_of"
+        )
+    except Exception:
+        return {'state': '조회 실패'}
+    if frame.empty:
+        return {'state': '게시 행 없음'}
+    generations, unreadable = [], 0
+    for record in frame.to_dict('records'):
+        values = [_clean_value(record.get(name)) for name in ('run_id', 'data_version', 'metric_version', 'data_as_of')]
+        stamp = _recorded_time(values[3]) if None not in values else None
+        if None in values or stamp is None:
+            unreadable += 1
+            continue
+        generations.append({'run_id': values[0], 'data_version': values[1], 'metric_version': values[2],
+                            'as_of': stamp, 'as_of_text': values[3], 'rows': _count(record.get('row_count'))})
+    if unreadable or not generations:
+        return {'state': '버전 값 미확인'}
+    latest = max(generations, key=lambda g: (g['as_of'], g['rows']))
+    return {'state': '버전 확인', 'latest': latest,
+            'summary': {'generations': len({g['run_id'] for g in generations}),
+                        'rows': sum(g['rows'] for g in generations),
+                        'as_of_min': _time_text(min(g['as_of'] for g in generations)),
+                        'as_of_max': _time_text(max(g['as_of'] for g in generations))}}
+
+
+def _ownership_check(query, table):
+    """게시 행의 run_id와 소유 대장·적재 이력의 차이를 읽기 전용으로 센다(audit_published_data와 같은 질의).
+    차이는 사실로만 기록하며, 생성 세대와 적재 세대의 대응 규약을 검증하기 전에는 오류로 해석하지 않는다."""
+    try:
+        frame = query(
+            f"SELECT COUNT(*) AS partitions, SUM(p.partition_id IS NULL) AS no_ledger_record, "
+            f"SUM(p.run_id <> a.run_id) AS ledger_run_differs, SUM(p.row_count <> a.actual_rows) AS row_count_differs, "
+            f"SUM(r.run_id IS NULL OR r.status <> 'COMMITTED') AS row_run_not_in_load_ledger "
+            f"FROM (SELECT _partition_id, run_id, COUNT(*) AS actual_rows FROM `{table}` "
+            f"GROUP BY _partition_id, run_id) a "
+            f"LEFT JOIN db_partition_ledger p ON p.partition_id = a._partition_id AND p.table_name = '{table}' "
+            f"LEFT JOIN db_load_run_ledger r ON r.run_id = a.run_id"
+        )
+        if frame.empty:
+            raise ValueError
+        row = frame.iloc[0]
+        return {'checked': True, 'partitions': _count(row['partitions']),
+                **{name: _count(row[name]) for name in _OWNERSHIP_FIELDS}}
+    except Exception:
+        return {'checked': False}
+
+
+def _is_zero(value) -> bool:
+    return str(value).strip().casefold() in {'0', '0.0', 'false'}
+
+
+def _read_ledger(query):
+    """활성 적재 세대와 최근 반영 시각을 읽는다. 확인하지 못한 값은 비워 둔다(현재 시각으로 채우지 않는다)."""
+    info = {'state': '확인 필요', 'reason': '', 'active_run_id': None, 'active_count': None,
+            'last_applied_at': None, 'last_applied_run_id': None, 'last_applied_tables': None,
+            'last_applied_rows': None, 'timezone': None}
+    try:
+        active = query("SELECT run_id, status, dry_run FROM db_load_run_ledger WHERE is_active = 'Y'")
+        last = query("SELECT run_id, applied_at, total_tables, total_rows FROM db_load_run_ledger "
+                     "WHERE status = 'COMMITTED' AND dry_run = 0 ORDER BY applied_at DESC LIMIT 1")
+        clock = query("SELECT NOW() AS db_now, UTC_TIMESTAMP() AS utc_now")
+    except Exception:
+        info['reason'] = '적재 이력 조회 실패'
+        return info
+    info['active_count'] = int(len(active))
+    if len(active) == 1:
+        record = active.iloc[0]
+        if str(record['status']).strip() == 'COMMITTED' and _is_zero(record['dry_run']):
+            info['active_run_id'] = _clean_value(record['run_id'])
+        else:
+            info['reason'] = '활성 이력이 완료된 실제 적재가 아닙니다'
+    else:
+        info['reason'] = '활성 적재 이력이 없습니다' if active.empty else f'활성 적재 이력이 {len(active)}개입니다'
+    if not last.empty:
+        stamp = _recorded_time(last.iloc[0]['applied_at'])
+        info['last_applied_at'] = _time_text(stamp)
+        info['last_applied_run_id'] = _clean_value(last.iloc[0]['run_id'])
+        info['last_applied_tables'] = _count(last.iloc[0]['total_tables'])
+        info['last_applied_rows'] = _count(last.iloc[0]['total_rows'])
+    try:
+        offset = (_recorded_time(clock.iloc[0]['db_now']) - _recorded_time(clock.iloc[0]['utc_now']))
+        hours = round(offset.total_seconds() / 3600)
+        info['timezone'] = 'KST' if hours == 9 else f'UTC{hours:+d}'
+    except Exception:
+        info['timezone'] = None
+    if info['active_run_id'] and info['last_applied_at']:
+        info['state'] = '확인'
+    elif not info['reason']:
+        info['reason'] = '최근 반영 시각을 확인하지 못했습니다'
+    return info
+
+
+def _ledger_state(query):
+    """적재 이력 응답 형식이 예상과 달라도 메타데이터 전체를 실패시키지 않고 '확인 필요'로 둔다."""
+    try:
+        return _read_ledger(query)
+    except Exception:
+        return {'state': '확인 필요', 'reason': '적재 이력 형식을 확인하지 못했습니다', 'active_run_id': None,
+                'active_count': None, 'last_applied_at': None, 'last_applied_run_id': None,
+                'last_applied_tables': None, 'last_applied_rows': None, 'timezone': None}
+
+
+def mysql_metadata(query) -> dict:
+    """로컬과 API가 동일한 게시 메타데이터 계약을 사용한다. 조회만 수행한다.
+
+    통계는 변경된 파티션만 교체하므로 한 표에 여러 세대가 함께 있는 것이 정상이다. 표의 첫 행 하나가 아니라
+    모든 세대를 읽어 자료 기준 시각의 범위를 만든다. 소유 대장·적재 이력과의 차이는 사실로만 기록하며,
+    LEDGER_CONVENTION_VERIFIED가 True가 되기 전에는 정상/실패로 판정하지 않고 항상 '확인 필요'다.
+    - 자료 기준 범위: 게시 통계 행의 data_as_of 최소~최대(시간대 변환 없음)
+    - DB 최근 반영: 완료된 실제 적재 이력의 마지막 시각(변경분 0건 회차 포함)
+    """
+    states, versions, summaries, ownership = {}, {}, {}, {}
+    problems, exceptions = [], []
+    populated = []
+    for table in PUBLISHED_TABLES:
+        result = _table_generation_state(query, table)
+        if result['state'] != '버전 확인':
+            states[table] = result['state']
+            versions[table] = None
+            problems.append(table)
+            continue
+        latest = result['latest']
+        versions[table] = (latest['run_id'], latest['data_version'], latest['metric_version'], latest['as_of_text'])
+        summaries[table] = result['summary']
+        populated.append(latest)
+        check = _ownership_check(query, table)
+        ownership[table] = check
+        if not check['checked']:
+            states[table] = '대장 확인 불가'
+            problems.append(table)
+        elif any(check[name] for name in _OWNERSHIP_FIELDS):
+            states[table] = '대조 차이'      # 참고 신호. 오류가 아니다(생성 세대와 적재 세대는 다를 수 있다).
+            exceptions.append((table, bool(check['no_ledger_record'] or check['row_count_differs'])))
+        else:
+            states[table] = '대조 일치'
+
+    ledger = _ledger_state(query)
     try:
         basis = query("SELECT DISTINCT contract_population_basis FROM mart_category_market LIMIT 1")
         contract_basis = basis.iloc[0, 0] if not basis.empty else ""
     except Exception:
         contract_basis = ''
+
+    # 규약 검증 전: 항상 '확인 필요'. 검증 후: 대장에 없거나 행 수가 다르면 실패, 세대 라벨 차이·조회 실패·이력 이상은 확인 필요.
+    broken = LEDGER_CONVENTION_VERIFIED and any(hard for _, hard in exceptions)
+    unverified = (not LEDGER_CONVENTION_VERIFIED or bool(problems) or any(not hard for _, hard in exceptions)
+                  or ledger['state'] != '확인')
+    version_consistent = False if broken else None if unverified else True
+    mins = [s['as_of_min'] for s in summaries.values()]
+    maxs = [s['as_of_max'] for s in summaries.values()]
+    as_of_min, as_of_max = (min(mins), max(maxs)) if summaries else (None, None)
+    newest = max(populated, key=lambda g: (g['as_of'], g['rows']), default=None)
+    published_run = ledger['active_run_id']
     return {
-        "run_id": version[0],
-        "snapshot_id": version[0],
-        "data_version": version[1],
-        "metric_version": version[2],
-        "data_as_of": version[3],
+        "run_id": published_run,
+        "snapshot_id": published_run,
+        "data_version": newest['data_version'] if newest else None,
+        "metric_version": newest['metric_version'] if newest else None,
+        # 호환용: 가장 최근 자료 기준. 전체가 이 시각까지 갱신됐다는 뜻이 아니다. 범위는 data_as_of_min/max.
+        "data_as_of": as_of_max,
+        "data_as_of_min": as_of_min,
+        "data_as_of_max": as_of_max,
+        "latest_generation_run_id": newest['run_id'] if newest else None,
         "contract_population_basis": contract_basis,
         "version_consistent": version_consistent,
-        "version_status": '일치' if version_consistent is True else '불일치' if version_consistent is False else '미확인',
+        "version_status": '정상' if version_consistent is True else '실패' if version_consistent is False else '확인 필요',
+        "mixed_generations": any(s['generations'] > 1 for s in summaries.values()),
         "table_version_states": states,
-        "table_versions": {table: value for table,value in versions},
+        "table_versions": versions,
+        "table_generations": summaries,
+        "ownership_checks": ownership,
+        "ledger_convention_verified": LEDGER_CONVENTION_VERIFIED,
+        "ledger": ledger,
         "required_tables_present": len(populated) == len(PUBLISHED_TABLES),
     }
 
