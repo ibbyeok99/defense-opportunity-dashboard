@@ -232,8 +232,8 @@
     },
     {
       "path": "dashboard/service/api_transport.py",
-      "sha256": "d4deee87e364c263926f638b5ac5333ca3f84d27c54c70a7744a5f40c3777494",
-      "git_lf_sha256": "013066dcbdaf5a074a2a4dc16fe7b737187ef5e8c4a8caf782eaca5393d96586"
+      "sha256": "ba4298594bffc2fcc23adae021613e6fd05f46cafd5b388237490fae236908d7",
+      "git_lf_sha256": "f1c2442624d918c7ae5956ef18f7caece3969714d4e3a805eaf78c298198e1fe"
     },
     {
       "path": "dashboard/service/automatic_review.py",
@@ -312,8 +312,8 @@
     },
     {
       "path": "dashboard/service/notice_requirements.py",
-      "sha256": "6f9191d399b49e5ee8f6a95a3ce42a441fbb4cd1221989e13529051831c7e045",
-      "git_lf_sha256": "58c55013d6055819110768d3b3e828ead28dd28bbbfc4d6ffd90e37a9a93e50e"
+      "sha256": "ee47415bbe656c2d322f3e78791d70e7417118cbd2ec3da0f7e94ea124349661",
+      "git_lf_sha256": "2d0b0834a798f2a3f904fac695a50be45d7ed99892088fe4a9b0a7c9ff3d13c9"
     },
     {
       "path": "dashboard/service/notice_saved_details.py",
@@ -371,14 +371,19 @@
       "git_lf_sha256": "90afbab0a8b2d366df71fd749caea35062af28df5f53081280e4c87605b92d54"
     },
     {
+      "path": "dashboard/service/requirement_list_projection.py",
+      "sha256": "604101642d790bcbe648c754597582151e6ac6078750f106282f4e43ff3e6c5e",
+      "git_lf_sha256": "604101642d790bcbe648c754597582151e6ac6078750f106282f4e43ff3e6c5e"
+    },
+    {
       "path": "dashboard/service/requirement_ocr.py",
       "sha256": "72489ab0babb3b8bbef626a98e5ee20731fd807e8166aeb38f72b2a248466d26",
       "git_lf_sha256": "fa2ec3c42858af471a2db19ff6ef96b93a5ed30b46d79cf3726f6783325e713f"
     },
     {
       "path": "dashboard/service/requirement_overlay.py",
-      "sha256": "866df3adabd4b0d0d5377a88607437cce2893bc1efe87033b39206bc96d191dd",
-      "git_lf_sha256": "b68629ebd532aeffb973682101fdfb6b3fabf7c285994ade63688b1ad0adc223"
+      "sha256": "25e1004fb6545ac389f6b2fdf474e7118424656edc7536b8712891c29754e635",
+      "git_lf_sha256": "9458e8cca930b55482a237adbd19d5c3bf4e68409ebb2de12ca1204f1b21d713"
     },
     {
       "path": "dashboard/service/requirement_presentation.py",
@@ -412,8 +417,8 @@
     },
     {
       "path": "dashboard/service/source.py",
-      "sha256": "1507f1966462e08590fdfb97a85b8ac5eab83711b077b2c754fddd58b431ff75",
-      "git_lf_sha256": "bff02894dcf8e99267f1c3150f7901bc10666891a609a50f434cea6ee6ed2660"
+      "sha256": "700d9938d5f9be49252bdf284ae12b00c3aefb827f2c83d426c48dd1d5aa593d",
+      "git_lf_sha256": "10fa6430c735e37ab8cc55a3daf1d3bf64b43c0cbf8db533fc16d27ea2786794"
     },
     {
       "path": "dashboard/streamlit_app.py",
@@ -562,8 +567,8 @@
     },
     {
       "path": "dashboard/view/requirement_evidence.py",
-      "sha256": "73d318549dd7f00d0d875fd4cc0fa41593b99da577df0112c66f1463f1ad0b1e",
-      "git_lf_sha256": "73d318549dd7f00d0d875fd4cc0fa41593b99da577df0112c66f1463f1ad0b1e"
+      "sha256": "6bf12e251b6ea03cf6812183c4b214ce476f4f9567eeb4265b3b5ff5b5b670d6",
+      "git_lf_sha256": "6bf12e251b6ea03cf6812183c4b214ce476f4f9567eeb4265b3b5ff5b5b670d6"
     },
     {
       "path": "dashboard/view/search_summary.py",
@@ -602,8 +607,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "8ce4e05a294e98483b1843578e685bf587252ce803cac6af255442c544840596",
-      "git_lf_sha256": "8ce4e05a294e98483b1843578e685bf587252ce803cac6af255442c544840596"
+      "sha256": "3da38a40380c11d03fdad27bd6cd59f407f5f486240c0fcbf1aff765e7027ed1",
+      "git_lf_sha256": "3da38a40380c11d03fdad27bd6cd59f407f5f486240c0fcbf1aff765e7027ed1"
     },
     {
       "path": "requirements.txt",
@@ -645,8 +650,8 @@
   ],
   "update_date": "2026-10-05",
   "update_basis": "사용자가 승인한 최종 공고 조건 판단·즐겨찾기·비교 및 목록 조회 속도 개선. 비밀값·원문 사본·서버 코드 제외.",
-  "source_working_tree_base": "d709994fae8310799e9b4c2aacf9052ab8165c6f",
-  "previous_deployment_commit": "07f6a7b7cd8e8846eb7743f5bdf8bbab51511f27",
+  "source_working_tree_base": "d33411d0e244084aea0febf0a397db9880aa5b4a",
+  "previous_deployment_commit": "ddcca5eec7a4713e889947d59d8726a18b4cc647",
   "working_tree_patch_included": true,
   "status": "검사 후 게시할 최종 수정본",
   "source_code_commit": "020bf25b509685744e25e604a537c5d6490fe8f7",

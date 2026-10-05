@@ -53,6 +53,9 @@ def fresh(record, now=None) -> bool:
 
 def condition(result, kind):
     """API 구조화 값, 명시적 없음, 해석할 문장을 각각 구분한다."""
+    if result.get('list_projection_schema'):
+        from service.requirement_list_projection import validate
+        return validate([result])[0]['resolved'][kind]
     if result.get('projection_schema'):
         from service.requirement_projection import validate
         return validate(result)['resolved'][kind]
@@ -197,6 +200,10 @@ def overlay(frame, records, now=None):
             continue
         if result is None:
             continue
+        if result.get('list_projection_schema'):
+            from service.notice_requirements import detail_fingerprint
+            if result['detail_fingerprint'] != detail_fingerprint(row):
+                continue
         facts = result.get("notice_facts", {})
         # 공식 API 제목의 끝 공백만 다른 실제 사례. 내부 문자·차수·마감 비교는 엄격히 유지한다.
         if facts.get("bidNtceNm") and str(facts["bidNtceNm"]).strip() != str(row.get("notice_name", "")).strip():

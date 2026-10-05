@@ -82,6 +82,8 @@ def _prepare_requirement_records(records, processing_version):
 @st.cache_data(ttl=60, max_entries=2, show_spinner=False)
 def read_requirement_evidence(*, include_expired=False, legacy_only=False) -> list[dict]:
     """공고별 최신 사본만 해석한다. 과거 사본은 보존하고 잘못된 파일은 사용하지 않는다."""
+    if SOURCE == 'api':
+        return [] if include_expired or legacy_only else _api_client().stored_requirements()
     import re
     from service.requirement_overlay import fresh, identity
     records = {}

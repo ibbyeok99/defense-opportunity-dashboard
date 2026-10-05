@@ -37,7 +37,7 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
                     st.rerun()
         # 시각이 같으면 현재 규칙으로 검증한 목록 사본을 이전 세션 결과보다 우선한다.
         candidates = [r for r in (notice.get("requirement_evidence"), st.session_state.get(state_key)) if r]
-        result = max(candidates, key=lambda r: r.get("checked_at", "")) if candidates else None
+        result = max(candidates, key=lambda r: (r.get("checked_at", ""), not bool(r.get('list_projection_schema')))) if candidates else None
         if not async_status and st.session_state.get(state_key, {}).get("error"):
             result = st.session_state[state_key]
         if not result:
@@ -60,7 +60,7 @@ def evidence_panel(notice, checker=None, on_updated=None, *, async_status=None, 
                 resolved = result["resolved"][kind]
                 st.markdown(f"**{label}: {review_label(resolved['review'])}**" + (f" — {resolved['values']}" if resolved['values'] else ""))
             st.caption("확인 결과는 요건 표·검색에 반영됩니다. 24시간이 지나면 다시 확인합니다.")
-        if result.get('projection_schema'):
+        if result.get('projection_schema') or result.get('list_projection_schema'):
             return
         for kind in ("면허", "지역", "참가자격", "기타 참가조건"):
             items = [e for e in result["evidence"] if e["kind"] == kind and e.get("relevant", True)]

@@ -509,7 +509,7 @@ def poll_detail_evidence(notice, force=False):
     if existing and (existing['phase'] == 'running' or (not force and not expired_shared)):
         return existing
     saved = notice.get('requirement_evidence')
-    if not isinstance(saved, dict) or saved.get('api_only'):
+    if not isinstance(saved, dict) or saved.get('api_only') or saved.get('list_projection_schema'):
         # 공고 목록에서는 사본을 읽지 않는다. 상세/즐겨찾기 요청 시에만 읽는다.
         saved = source.read_notice_requirement_evidence(pt,number,order)
     if not force and isinstance(saved, dict) and fresh(saved) and saved.get('detail_fingerprint') == fingerprint:
@@ -521,6 +521,10 @@ def poll_detail_evidence(notice, force=False):
     shared_client = source._api_client() if source.SOURCE == 'api' else None
     from service.requirement_queue import source_fingerprint
     stored_hash = source_fingerprint(notice)
+    listed = notice.get('requirement_evidence')
+    if isinstance(listed, dict) and listed.get('list_projection_schema') and listed.get('detail_fingerprint') == fingerprint:
+        from service.requirement_list_projection import validate
+        stored_hash = validate([listed])[0]['source_fingerprint']
 
     def work(progress):
         import pandas as pd
