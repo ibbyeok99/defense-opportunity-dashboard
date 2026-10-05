@@ -422,8 +422,8 @@
     },
     {
       "path": "dashboard/streamlit_app.py",
-      "sha256": "c0700099a5a0dac9caf168c88db83639b02d39e60f1a5580326f4958e3fd32c1",
-      "git_lf_sha256": "1ed0ff79c29412e9e8496657354bc388b33a23fa7fd78641ee4c7a6ff2f6587e"
+      "sha256": "4c1e3ad023e2542b25d618c2c9a49111c8021927b012de49647b064a4d386fea",
+      "git_lf_sha256": "10cb407eab864fea1cf3ebd4db048a68c8ca3927f55b9922fe7ad3f9467e2f04"
     },
     {
       "path": "dashboard/view/__init__.py",
@@ -467,8 +467,8 @@
     },
     {
       "path": "dashboard/view/detail_design.py",
-      "sha256": "808f3d7be1c3087cc28fa4e3ecf06dc2ecc431fff6ef7081c9463057b8091882",
-      "git_lf_sha256": "808f3d7be1c3087cc28fa4e3ecf06dc2ecc431fff6ef7081c9463057b8091882"
+      "sha256": "5fbc6ed1e3607574b8a81bc0e484089b0fd9615211eaa074994cafd6becefd6b",
+      "git_lf_sha256": "5fbc6ed1e3607574b8a81bc0e484089b0fd9615211eaa074994cafd6becefd6b"
     },
     {
       "path": "dashboard/view/entry_summary.py",
@@ -514,6 +514,11 @@
       "path": "dashboard/view/loading.py",
       "sha256": "52adab2d8d0eb8132ac282defa2f0c6f3d41ff84bc473257c1c52f5324c51694",
       "git_lf_sha256": "7e861d64c19c895c900ea3a91c41571c754b025978938f36008f0209d2261469"
+    },
+    {
+      "path": "dashboard/view/login_navigation.py",
+      "sha256": "8489de8e36f54c6812d513b723b2ba44bec5c9023fdb3a39b6ba108483764fd0",
+      "git_lf_sha256": "8489de8e36f54c6812d513b723b2ba44bec5c9023fdb3a39b6ba108483764fd0"
     },
     {
       "path": "dashboard/view/navigation.py",
@@ -607,8 +612,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "488a24b280ee7ca2ebb8a0e87fd50b185398d5138e90a816afd25d6fb62f6008",
-      "git_lf_sha256": "488a24b280ee7ca2ebb8a0e87fd50b185398d5138e90a816afd25d6fb62f6008"
+      "sha256": "5ca170ae7f9ac8f003695650be65f9504f30401bd0f579991fc9ca976ae7b67b",
+      "git_lf_sha256": "5ca170ae7f9ac8f003695650be65f9504f30401bd0f579991fc9ca976ae7b67b"
     },
     {
       "path": "requirements.txt",
@@ -649,12 +654,12 @@
     }
   ],
   "update_date": "2026-10-05",
-  "update_basis": "로그인 쿠키가 유지된 새 세션에서도 홈 주소 유지. 관리자 권한 검증과 직접 공고 진입 유지.",
-  "source_working_tree_base": "c19d39e365d434cbbb419c72a56a513ac7ad6c61",
-  "previous_deployment_commit": "f766a7927a78639764a45fd037e808b58ae4d983",
+  "update_basis": "로그인 상태의 홈 유지·로그인 시작 전 페이지로 일회 복귀·상세 입력 안내 줄바꿈. 권한·외부 경로·만료 경계 유지.",
+  "source_working_tree_base": "3ee7213c1b415722321e8184328d4cbdc469d3e3",
+  "previous_deployment_commit": "39473f7e1ebde104e89658776f92f9bfcb9fba12",
   "working_tree_patch_included": false,
-  "status": "홈 강제 공고 이동 제거. 원본 홈·관리자 권한·탐색46검사 통과. 로그인된 공개 브라우저 반영 확인 필요.",
-  "source_code_commit": "c19d39e365d434cbbb419c72a56a513ac7ad6c61",
+  "status": "관련112검사와 브라우저 구성 요소 복귀/후속 홈 유지 통과. 실제 Google 인증 및 로그인된 공개 브라우저 확인 필요.",
+  "source_code_commit": "3ee7213c1b415722321e8184328d4cbdc469d3e3",
   "previous_verified_deployed_code_commit": "b9fcd16b1bb28822618dbb6dee704eb5ad10b7b3",
   "deployed_code_commit": "1f9e5756181b1078135d41eb7534213343cc2936",
   "account_settings_confirmation": "사용자 일반Chrome 저장 완료 보고",

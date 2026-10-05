@@ -22,6 +22,7 @@ from view.favorites import maintain_favorites
 from service import queries
 from service.notice_requirements import poll_detail_evidence
 from service.filters import Profile
+from view import login_navigation
 
 st.set_page_config(page_title=APP_TITLE, page_icon=":material/shield:", layout="wide")
 
@@ -56,6 +57,8 @@ def admin_login():
             if st.button('다른 계정으로 로그인', key='admin_oidc_retry'):
                 st.logout()
         elif st.button('관리자 계정으로 로그인', type='primary', key='admin_oidc_login'):
+            login_navigation.request_login(page.url_path)
+        if login_navigation.login_prepared():
             provider = admin_access.config().get('provider')
             st.login(provider) if provider else st.login()
         return
@@ -93,8 +96,10 @@ if st.session_state.is_admin:
 page = st.navigation(pages, position="hidden")
 
 # 홈은 DB 조회·검색 위젯·관리자 진입·공통 헤더 없이 독립적으로 표시한다.
-# 로그인 쿠키가 있는 새 세션도 홈 주소를 유지하며, 공고 진입은 홈 버튼으로 선택한다.
+# 로그인 시작 때 저장한 표식만 복원한다. 로그인 쿠키만 있는 홈 접속은 이동하지 않는다.
 if page.url_path == "":
+    if data.SOURCE == 'api':
+        login_navigation.restore_login_page(st.session_state.is_admin)
     page.run()
     st.stop()
 

@@ -46,7 +46,7 @@ def judgement_banner(status, conditions):
         _, tone, message = verdict(status)
         return tone, message
     fields = "·".join("보유 면허" if kind == "면허" else "소재지" for kind in requested)
-    return "input", f"참여 조건을 비교하려면 왼쪽 ‘내 회사 조건’에 {fields}를 입력해 주세요."
+    return "input", f"참여 조건을 비교하려면\n왼쪽 ‘내 회사 조건’에 {fields}를 입력해 주세요."
 
 
 def judgement_review_note(conditions):
@@ -185,7 +185,7 @@ def apply_detail_style():
 .st-key-notice_detail_surface .detail-banner {
   padding: .6rem 1rem; border-radius: 8px; margin-block: .15rem .5rem;
   background: light-dark(#EDF4FF, #273B59); font-size: 1.05rem; font-weight: 600;
-  color: light-dark(#005BFF, #93BEFF); line-height: 1.5;
+  color: light-dark(#005BFF, #93BEFF); line-height: 1.5; white-space: pre-line;
 }
 .st-key-notice_detail_surface .detail-banner.no { background: light-dark(#FFF0F0, #4A2B32); color: light-dark(#B42318, #FFA3A3); }
 .st-key-notice_detail_surface .detail-banner.check { background: light-dark(#FFF7E8, #493D29); color: light-dark(#9A5400, #FFD18B); }
